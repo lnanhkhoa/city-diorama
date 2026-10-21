@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cities Diorama — miniature 3D cities with live weather</title>
+    <meta name="description" content="Explore hand-built 3D isometric dioramas of world cities — Hanoi, Paris, New York and more — rendered in Three.js with live local weather." />
+    <meta name="theme-color" content="#eef0e2" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 10.5v11L16 29 3 21.5v-11z' fill='%232f3a4a'/%3E%3Cpath d='M16 3 29 10.5 16 18 3 10.5z' fill='%23a9b6c6'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <div id="stage" class="stage"></div>
+      <div id="loader" class="loader">
+        <span id="loader-label" class="loader-label" role="status"></span>
+        <span class="loader-bar"><i></i></span>
+      </div>
+
+      <header class="topbar">
+        <div class="topbar-start">
+          <a class="brand" href="#/" aria-label="Cities Diorama home">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 29 10.5v11L16 29 3 21.5v-11z" fill="currentColor" opacity=".9"/><path d="M16 3 29 10.5 16 18 3 10.5z" fill="var(--bg-top)"/></svg>
+            <span>Cities<br />Diorama</span>
+          </a>
+          <span id="fps" class="fps" aria-hidden="true"></span>
+        </div>
+        <div class="top-actions">
+          <div class="weather-menu">
+            <button id="weather-btn" class="menu-btn weather-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="weather-list" title="Weather and time of day">
+              <span>Current</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            <div id="weather-list" class="weather-list" role="menu" aria-label="Weather and time of day" tabindex="-1" hidden>
+              <div role="group" data-group="weather" aria-labelledby="weather-group-condition">
+                <div id="weather-group-condition" class="group-label" role="presentation">Condition</div>
+                <div role="menuitemradio" data-value="current" aria-checked="true">Current</div>
+                <div role="menuitemradio" data-value="clear" aria-checked="false">Clear</div>
+                <div role="menuitemradio" data-value="partly" aria-checked="false">Partly cloudy</div>
+                <div role="menuitemradio" data-value="cloudy" aria-checked="false">Overcast</div>
+                <div role="menuitemradio" data-value="fog" aria-checked="false">Fog</div>
+                <div role="menuitemradio" data-value="drizzle" aria-checked="false">Drizzle</div>
+                <div role="menuitemradio" data-value="rain" aria-checked="false">Rain</div>
+                <div role="menuitemradio" data-value="snow" aria-checked="false">Snow</div>
+                <div role="menuitemradio" data-value="storm" aria-checked="false">Storm</div>
+              </div>
+              <div role="group" data-group="time" aria-labelledby="weather-group-time">
+                <div id="weather-group-time" class="group-label" role="presentation">Time of day</div>
+                <div role="menuitemradio" data-value="local" aria-checked="true">Local time</div>
+                <div role="menuitemradio" data-value="dawn" aria-checked="false">Dawn</div>
+                <div role="menuitemradio" data-value="day" aria-checked="false">Day</div>
+                <div role="menuitemradio" data-value="dusk" aria-checked="false">Dusk</div>
+                <div role="menuitemradio" data-value="night" aria-checked="false">Night</div>
+                <div role="menuitemradio" data-value="dark" aria-checked="false">Dark</div>
+              </div>
+            </div>
+          </div>
+          <button id="menu-btn" class="menu-btn" type="button" aria-haspopup="dialog" aria-controls="city-menu" aria-keyshortcuts="/" title="Choose a city (/)">All cities</button>
+        </div>
+      </header>
+
+      <section class="poster">
+        <p id="country" class="country"></p>
+        <h1 id="city" class="city" aria-live="polite"></h1>
+        <div class="meta">
+          <div id="icon" class="icon"></div>
+          <p id="temp" class="temp"></p>
+          <div class="info">
+            <p id="date" class="date"></p>
+            <p id="condition" class="condition" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="bottombar">
+        <div class="actions">
+          <button id="share-btn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4l18 7-18 7 4-7z" /></svg>
+            Share
+          </button>
+          <button id="save-btn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z" /></svg>
+            Save
+          </button>
+        </div>
+        <nav class="pager" aria-label="City navigation">
+          <button id="prev-btn" class="round ghost" type="button" aria-label="Previous city">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+          </button>
+          <span id="counter" class="counter"></span>
+          <button id="next-btn" class="round" type="button" aria-label="Next city">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </button>
+        </nav>
+      </footer>
+
+      <dialog id="city-menu" class="city-menu" aria-label="Choose a city">
+        <form method="dialog" class="menu-head">
+          <h2>Choose a city</h2>
+          <button class="close" aria-label="Close">×</button>
+        </form>
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+          <input id="city-search" type="search" placeholder="Search city or country" aria-label="Search cities" aria-controls="city-list" autocomplete="off" spellcheck="false" enterkeyhint="go" />
+          <kbd aria-hidden="true">Enter</kbd>
+        </label>
+        <ul id="city-list" aria-label="Cities"></ul>
+        <p id="city-empty" class="empty" role="status" hidden></p>
+      </dialog>
+
+      <div id="toast" class="toast" role="status"></div>
+    </main>
+    <noscript>Cities Diorama needs JavaScript and WebGL to render the 3D cities.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

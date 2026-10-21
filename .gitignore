@@ -1,0 +1,6 @@
+node_modules
+dist
+*.log
+.DS_Store
+# Rodin reference images and downloads; only the baked src/cities/shapes/*.shape.ts are committed.
+.rodin/

@@ -1,0 +1,26 @@
+<!doctype html>
+<html><body style="margin:0;background:#aeb6c2">
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeStatic } from '/src/kit/merge.ts';
+// ?slug=paris&c=x,y,z&t=x,y,z&time=seconds  (camera position, look-at target, animation time)
+const q = new URLSearchParams(location.search);
+const num = (k, d) => (q.get(k) ?? d).split(',').map(Number);
+// Dynamic: the city module is chosen by the query string.
+const { default: build } = await import(`/src/cities/list/${q.get('slug')}.ts`);
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(1200, 800); r.setPixelRatio(1.5); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; document.body.append(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0xaeb6c2);
+s.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+const cam = new THREE.PerspectiveCamera(35, 1.5, 0.02, 200);
+cam.position.set(...num('c', '3,2,3')); cam.lookAt(new THREE.Vector3(...num('t', '0,0,0')));
+s.add(new THREE.HemisphereLight(0xffffff, 0x888888, 1));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-6, 14, 10); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 }); sun.shadow.mapSize.set(4096, 4096); s.add(sun);
+const city = build(); mergeStatic(city.root); s.add(city.root);
+city.update?.(Number(q.get('time') ?? 3), 0.016);
+r.render(s, cam);
+window.__done = true;
+</script></body></html>
