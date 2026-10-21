@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { beforeAll, describe, expect, it } from 'vitest';
-import { CITIES, cityFromHash, loadCity } from '../src/cities';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { CITIES, cityBuild, cityFromHash, loadCity } from '../src/cities';
 import type { CityBuild } from '../src/cities/types';
 import { mergeStatic } from '../src/kit/merge';
 import { TILE } from '../src/kit';
@@ -42,6 +42,16 @@ describe('city registry', () => {
 
   it('rejects a slug without a scene module', async () => {
     await expect(loadCity('atlantis')).rejects.toThrow(/atlantis/);
+  });
+
+  it('gives React one stable build promise per city, resolving null instead of rejecting', async () => {
+    // `use()` suspends again on a new promise, so a re-render must get the same one.
+    expect(cityBuild('tokyo')).toBe(cityBuild('tokyo'));
+    expect(await cityBuild('tokyo')).toBe(await loadCity('tokyo'));
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(cityBuild('atlantis')).toBe(cityBuild('atlantis'));
+    expect(await cityBuild('atlantis')).toBeNull();
+    errors.mockRestore();
   });
 
   it('resolves hashes to cities and falls back to the first city', () => {

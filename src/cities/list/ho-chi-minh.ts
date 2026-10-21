@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   Animator, M, archHole, area, beam, box, building, bus, car, cone, createBase, crosswalk, cylinder, floodMat, gableRoof, group,
-  hipRoof, lamp, lampMaterial, mansardRoof, mat, mergeStatic, patch, person, profile, rng, road, scatter, shape, sphere, tree,
+  hipRoof, lamp, lampMaterial, mansardRoof, mat, mergeStatic, patch, person, prism, profile, rng, road, scatter, shape, sphere, tree,
   tube, waterMat, windowMaterial, type Place,
 } from '../../kit';
 import type { CityScene } from '../types';
@@ -274,11 +274,12 @@ function landmark81(p: Place): THREE.Group {
 }
 
 // Bitexco Financial Tower (262 m), a lotus bud: elliptical glass floors that swell a little and then taper, a crown cut on a
-// slant that rises away from the helipad, and the helipad cantilevered toward the river three quarters of the way up. Pale
-// fins band the floors, two dark glass belts circle it; a lens-shaped podium with a roof garden. The glass glows at night.
+// slant that rises away from the helipad, and the helipad cantilevered toward the river three quarters of the way up. A
+// pale spine climbs the helipad side from the podium to the crown, a pale lip edges the slanted cut, and mullions and floor
+// fins grid the glass; two dark glass belts circle it. It stands on a three-tier podium of rounded glazed terraces with a
+// roof garden. The glass glows at night.
 function bitexco(p: Place): THREE.Group {
   const g = group(p);
-  const base = 0.42;
   const H = 6.5; // shaft height on the helipad side
   const CROWN = 0.9; // the crown's high side rises this much more
   const RX = 0.72;
@@ -287,19 +288,30 @@ function bitexco(p: Place): THREE.Group {
   const NY = 16;
   const hx = -Math.SQRT1_2; // helipad side: toward the river
   const hz = Math.SQRT1_2;
+  // Podium terraces, bottom to top: half-width, half-depth, corner radius, height. Each steps in, like the real one.
+  const TIERS: [number, number, number, number][] = [[1.1, 0.85, 0.42, 0.2], [0.98, 0.74, 0.36, 0.18], [0.86, 0.63, 0.3, 0.16]];
+  let base = 0;
+  for (const [w, d, r, h] of TIERS) {
+    g.add(prism(roundRect(-w, -d, w, d, r), h, FIN, { y: base }));
+    // Glazed band set into the terrace face, and a pale lip round its roof.
+    g.add(prism(roundRect(-w - 0.012, -d - 0.012, w + 0.012, d + 0.012, r), h * 0.55, windowMaterial, { y: base + h * 0.2 }));
+    g.add(prism(roundRect(-w - 0.03, -d - 0.03, w + 0.03, d + 0.03, r + 0.03), 0.03, M.white, { y: base + h - 0.03 }));
+    base += h;
+  }
   const taper = (y: number) => {
     const t = y / (H + CROWN);
     return 1 + 0.1 * Math.sin(Math.PI * Math.min(1, t * 1.7)) - 0.52 * t * t;
   };
   const topAt = (a: number) => H + (CROWN * (1 - (Math.cos(a) * hx + Math.sin(a) * hz))) / 2;
-  const at = (j: number, i: number): [number, number, number] => {
-    const a = (i / NS) * Math.PI * 2;
+  /** Point on the glass at angle `a`, floor row `j` of NY, pushed `out` beyond the surface (for ribs). */
+  const at = (j: number, a: number, out = 1): [number, number, number] => {
     const y = (topAt(a) * j) / NY;
-    const r = taper(y);
+    const r = taper(y) * out;
     return [Math.cos(a) * RX * r, base + y, Math.sin(a) * RZ * r];
   };
+  const col = (i: number) => (i / NS) * Math.PI * 2;
   const pos: number[] = [];
-  for (let j = 0; j <= NY; j++) for (let i = 0; i < NS; i++) pos.push(...at(j, i));
+  for (let j = 0; j <= NY; j++) for (let i = 0; i < NS; i++) pos.push(...at(j, col(i)));
   const idx: number[] = [];
   for (let j = 0; j < NY; j++) {
     for (let i = 0; i < NS; i++) {
@@ -313,8 +325,16 @@ function bitexco(p: Place): THREE.Group {
   shaft.setIndex(idx);
   shaft.computeVertexNormals();
   addMesh(g, shaft, BITEXCO_GLASS);
+  // Mullions on every other column (two floors per segment: the city is near the triangle cap), the spine up the helipad
+  // side, and the lip round the slanted cut.
+  for (let i = 0; i < NS; i += 2) {
+    for (let j = 0; j < NY; j += 2) g.add(beam(at(j, col(i), 1.01), at(j + 2, col(i), 1.01), 0.016, FIN));
+  }
+  const spineA = Math.atan2(hz / RZ, hx / RX);
+  for (let j = 0; j < NY; j++) g.add(beam(at(j, spineA, 1.04), at(j + 1, spineA, 1.04), 0.07, M.white));
+  for (let i = 0; i < NS; i++) g.add(beam(at(NY, col(i), 1.01), at(NY, col(i + 1), 1.01), 0.04, M.white));
   // Slanted crown: a flat cap over the top ring.
-  const rim = Array.from({ length: NS }, (_, i) => at(NY, i));
+  const rim = Array.from({ length: NS }, (_, i) => at(NY, col(i)));
   const mid = [0, 1, 2].map((k) => rim.reduce((s, q) => s + q[k], 0) / NS);
   const capPos: number[] = [];
   for (let i = 0; i < NS; i++) capPos.push(...mid, ...rim[(i + 1) % NS], ...rim[i]);
@@ -349,17 +369,11 @@ function bitexco(p: Place): THREE.Group {
   for (const x of [-0.06, 0.06]) mark.add(box(0.025, 0.004, 0.16, BELT, { x }));
   mark.add(box(0.12, 0.004, 0.025, BELT));
   g.add(mark);
-  // Podium with a roof garden.
-  const pod = cylinder(1.0, 1.04, base, FIN, { segments: 20 });
-  pod.scale.z = 0.78;
-  g.add(pod);
-  const glaze = cylinder(1.035, 1.035, 0.18, windowMaterial, { y: 0.08, segments: 20, open: true });
-  glaze.scale.z = 0.78;
-  g.add(glaze);
-  const garden = cylinder(0.94, 0.94, 0.03, LAWN, { y: base, segments: 20 });
-  garden.scale.z = 0.78;
+  // Roof garden on the top terrace.
+  const garden = cylinder(0.6, 0.6, 0.03, LAWN, { y: base, segments: 20 });
+  garden.scale.z = 0.72;
   g.add(garden);
-  for (const [x, z] of [[0.75, 0.2], [0.45, 0.5], [-0.2, 0.62], [0.62, -0.38]] as const) g.add(sphere(0.09, HEDGE, { x, y: base, z, segments: 5 }));
+  for (const [x, z] of [[0.72, 0.18], [0.5, 0.42], [-0.25, 0.5], [0.62, -0.32]] as const) g.add(sphere(0.08, HEDGE, { x, y: base, z, segments: 5 }));
   return g;
 }
 

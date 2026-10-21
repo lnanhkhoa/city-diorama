@@ -3,7 +3,8 @@
 Miniature 3D city dioramas in the browser. Each city is a hand-built,
 procedural Three.js scene on a 20 × 20 display plinth (landmarks, streets,
 water, traffic, people), framed like a collectible poster with the city's live
-weather, local date and temperature.
+weather, local date and temperature. The app is React (Vite) with the 3D view
+in [react-three-fiber](https://r3f.docs.pmnd.rs/).
 
 Cities: Hanoi, Ho Chi Minh City, Paris, New York, Sydney, Rome, Kuala Lumpur,
 Tokyo, London, Dubai, Cairo, Rio de Janeiro, San Francisco.
@@ -53,15 +54,20 @@ bun run rodin      # Rodin asset batch: status | brief | bake (docs/rodin-pipeli
 
 | Path | Role |
 |---|---|
-| `src/scene/stage.ts` | Renderer, camera fit, key/rim/hemisphere lights, half-resolution GTAO ambient occlusion, MSAA on the scene pass only, city swap, poster snapshots |
+| `src/App.tsx` | App shell: hash routing, weather state and pins, header, picker, save/share. The stage renders a deferred copy of the route and suspends on the city's module, so the previous city stays up (with the loading indicator) until the next one is ready |
+| `src/scene/Diorama.tsx` | `<Canvas>`: camera fit, orbit controls, adaptive pixel ratio, composer render loop with the per-frame TAA jitter (history reset while a city swaps), poster snapshots (`DioramaHandle`) |
+| `src/scene/Atmosphere.tsx` | Environment map, key/rim/hemisphere lights per weather and time of day, shadow catcher, weather particles |
+| `src/scene/city-stage.ts` | Displayed city and the shrink/grow swap; builds the incoming city after the outgoing one has left |
+| `src/scene/passes.ts` | Half-resolution GTAO ambient occlusion, MSAA on the scene pass only, straight-alpha output, temporal antialiasing (jittered projection, depth reprojection, neighbourhood-clamped history) that steadies sub-pixel details while the camera turns |
 | `src/scene/resolution.ts` | Adaptive quality: drops the pixel ratio (1.75 → 1.5 → 1.25 → 1) when frames fall below ~52 fps, with MSAA kept at every level; probes back up with headroom; failed levels are retried after a doubling delay. Isolated hitches, pauses, city swaps and poster renders do not count |
 | `src/scene/weatherFx.ts` | Rain, snow and lightning |
 | `src/kit/` | Shared construction kit: primitives, buildings and towers with real construction detail, props, display plinth, cached materials, static-geometry merger, path animator, baked-shape loader |
 | `src/cities/shapes/` | Sculptural forms baked from Hyper3D Rodin models by `bun run rodin bake`; batch manifest in `scripts/rodin/assets.ts` ([docs/rodin-pipeline.md](docs/rodin-pipeline.md)) |
-| `src/cities/index.ts` | City metadata in display order, plus `loadCity`: each scene is a lazily fetched chunk (loading indicator on first visit, neighbours prefetched) |
+| `src/cities/index.ts` | City metadata in display order, plus `loadCity`: each scene is a lazily fetched chunk (neighbours prefetched). `cityBuild` wraps it for `use()`: one stable promise per city that resolves null on failure |
 | `src/cities/list/<slug>.ts` | One scene module per city, default-exporting its `build()` |
-| `src/weather/` | Open-Meteo client, WMO code mapping, city-local date/day-night |
-| `src/ui/` | City picker (search ranking, keyboard nav, live cards), weather icons, night palette, poster composer |
+| `src/cities/live.ts` | `useCityRegistry`: the registry, swapped in place when a city module is edited in dev |
+| `src/weather/` | Open-Meteo client, WMO code mapping, city-local date/day-night, live-weather cache, menu/URL pins |
+| `src/ui/` | React components (city picker, weather menu, loader, toast, FPS), search ranking, weather icons, night palette, poster composer |
 
 Geometry is built in code: no models or textures are downloaded. Organic forms
 that primitives cannot express (statues, animals, terrain) are generated with

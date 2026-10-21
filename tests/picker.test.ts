@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CITIES } from '../src/cities';
 import type { CityDef } from '../src/cities/types';
-import { matchCities } from '../src/ui/picker';
+import { matchCities } from '../src/ui/match';
 import { fetchWeatherMany, formatLocalTime } from '../src/weather/api';
 
 const city = (name: string, country: string): CityDef => ({ ...CITIES[0], slug: name.toLowerCase().replace(/\s+/g, '-'), name, country });

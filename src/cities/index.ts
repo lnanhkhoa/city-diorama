@@ -145,33 +145,41 @@ export function cityFromHash(hash: string): CityDef {
 }
 
 const modules = import.meta.glob<CityBuild>('./list/*.ts', { import: 'default' });
-const loaded = new Map<string, CityBuild>();
-const pending = new Map<string, Promise<CityBuild>>();
-
-/** Build function of a city whose module has already loaded, so it can be shown without waiting. */
-export function loadedCity(slug: string): CityBuild | undefined {
-  return loaded.get(slug);
-}
+const requests = new Map<string, Promise<CityBuild>>();
+const builds = new Map<string, Promise<CityBuild | null>>();
 
 /**
- * Fetch a city's scene module. Concurrent calls share one request; a failed
- * request is forgotten so the next call asks again, though Chromium keeps a
- * failed module fetch for the life of the page, so only a reload recovers there.
+ * Fetch a city's scene module. Every call for a city returns the same
+ * promise; a failed request is forgotten so the next call asks again, though
+ * Chromium keeps a failed module fetch for the life of the page, so only a
+ * reload recovers there.
  */
 export function loadCity(slug: string): Promise<CityBuild> {
-  const ready = loaded.get(slug);
-  if (ready) return Promise.resolve(ready);
-  let p = pending.get(slug);
+  let p = requests.get(slug);
   if (!p) {
     const load = modules[`./list/${slug}.ts`];
     if (!load) return Promise.reject(new Error(`No scene module for city "${slug}"`));
-    p = load()
-      .then((build) => {
-        loaded.set(slug, build);
-        return build;
-      })
-      .finally(() => pending.delete(slug));
-    pending.set(slug, p);
+    p = load();
+    requests.set(slug, p);
+    p.catch(() => requests.delete(slug));
+  }
+  return p;
+}
+
+/**
+ * A city's build function for React's `use()`: one stable promise per city
+ * that resolves to null (and logs) instead of rejecting, so a failed load
+ * leaves the stage as it is rather than reaching an error boundary. The
+ * outcome is kept for the life of the page; rendering again must not refetch.
+ */
+export function cityBuild(slug: string): Promise<CityBuild | null> {
+  let p = builds.get(slug);
+  if (!p) {
+    p = loadCity(slug).catch((err: unknown) => {
+      console.error(`Could not load city "${slug}"`, err);
+      return null;
+    });
+    builds.set(slug, p);
   }
   return p;
 }
