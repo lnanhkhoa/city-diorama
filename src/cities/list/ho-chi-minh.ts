@@ -13,8 +13,9 @@ import MOTORBIKE from '../shapes/motorbike-lite.shape';
 // which faces the oval park and its fountain. The Notre-Dame Cathedral and the Opera House stand behind the park, Bitexco
 // and three apartment blocks at the back right. The shophouse rows, the Central Post Office and Ben Thanh Market fill the
 // right; Landmark 81, the palm plaza and the night-market stalls the left front. The avenue along the front edge carries
-// most of the traffic and widens into the Quach Thi Trang roundabout in front of Ben Thanh's south gate, with Tran
-// Nguyen Han on horseback at its centre. The river stays inside a stone curb along the plinth's top edge.
+// most of the traffic past the Ben Thanh square, where Tran Nguyen Han on horseback faces the south gate and the Quach Thi
+// Trang bust stands on a lawn at the corner; the junction at the market's corner is a signalised crossroads, as it has been
+// since the roundabout made way for the metro station. The river stays inside a stone curb along the plinth's top edge.
 
 type Mat = THREE.Material;
 type XZ = [number, number];
@@ -46,6 +47,9 @@ const POST_YELLOW = floodMat(0xeec567, 0xffd27a, 0.45);
 const MARKET_WALL = floodMat(0xf1e4c3, 0xffdfa6, 0.4);
 const STATUE = floodMat(0xf0ede6, 0xffe6bf, 0.6);
 const BRONZE = floodMat(0x6b5536, 0xffb466, 0.5, { roughness: 0.45 });
+// Traffic signal lenses, lit day and night.
+const SIGNAL_RED = mat(0xe8402f, { emissive: 0xff3a22, emissiveIntensity: 0.8 });
+const SIGNAL_GREEN = mat(0x33c06a, { emissive: 0x33ff77, emissiveIntensity: 0.8 });
 const PYLON = floodMat(0xf4f4f0, 0xfff0d6, 0.55, { roughness: 0.5 });
 // Ba Son's stay cables, the "harp of light": pale by day, glowing blue-white at night.
 const CABLE = floodMat(0xf4f4f0, 0x8fd2ff, 1.8, { roughness: 0.4 });
@@ -94,23 +98,20 @@ const RAMP_X = -2.6;
 const PYLON_X = -8.75;
 
 const V1_X = 2.6; // street past the cathedral, the park and Ben Thanh
-const AVE_Z = 8.1; // avenue along the front edge
+const AVE_Z = 8.4; // avenue along the front edge
+const AVE_W = 1.6;
 const PARK: XZ = [0.15, -0.65]; // oval lawn centre
-// Quach Thi Trang roundabout on the avenue, centred on Ben Thanh's south gate.
-const RB: XZ = [5.9, 8.15];
-const RB_R = 1.45; // outer edge of its ring road
 
 // Streets [x1, z1, x2, z2, width]; trees and props keep clear of them.
 const ROADS: [number, number, number, number, number][] = [
   [V1_X, -9.94, V1_X, 9.94, 1.1],
-  [-5.35, AVE_Z, RB[0] - RB_R + 0.25, AVE_Z, 2.2], // the avenue, west and east of the roundabout
-  [RB[0] + RB_R - 0.25, AVE_Z, 9.94, AVE_Z, 2.2],
+  [-5.35, AVE_Z, 9.94, AVE_Z, AVE_W],
   [-5.35, 2.6, -2.4, 2.6, 0.9], // between the palace and Landmark 81
-  [-4.95, 2.15, -4.95, 7.0, 0.8], // riverside road
-  [-1.5, 3.0, -1.5, 7.0, 0.9], // between Landmark 81 and the stalls
+  [-4.95, 2.15, -4.95, AVE_Z - AVE_W / 2, 0.8], // riverside road
+  [-1.5, 3.0, -1.5, AVE_Z - AVE_W / 2, 0.9], // between Landmark 81 and the stalls
   [3.1, -2.25, 9.94, -2.25, 0.9], // in front of the shophouses
   [3.1, 1.05, 8.8, 1.05, 0.9], // between the post office and Ben Thanh
-  [9.2, -2.7, 9.2, 7.0, 0.9], // along the right edge
+  [9.2, -2.7, 9.2, AVE_Z - AVE_W / 2, 0.9], // along the right edge
   [-3.0, DECK_Z, -1.8, DECK_Z, DECK_W], // foot of the bridge, into the park ring
 ];
 
@@ -671,7 +672,7 @@ function vendor(x: number, z: number, ry: number): THREE.Group {
   return g;
 }
 
-/** Round planted bed with a hedge ring: the base of the plaza monument and the roundabout statue. */
+/** Round planted bed with a hedge ring: the base of the plaza monument. */
 function hedgedBed(g: THREE.Group, r: number): void {
   g.add(cylinder(r + 0.04, r + 0.06, 0.06, CURB, { segments: 16 }));
   g.add(cylinder(r, r, 0.08, LAWN, { segments: 16 }));
@@ -692,20 +693,16 @@ function monument(p: Place): THREE.Group {
   return g;
 }
 
-// Tran Nguyen Han on horseback, in bronze on a tall stepped granite pedestal, at the centre of the roundabout in front of
-// Ben Thanh: a hedged island with flower beds. The horse faces local +z.
+// Tran Nguyen Han on horseback, in bronze on a tall stepped granite pedestal over a round step: the monument the 2025
+// renovation returns to its old spot in the square in front of Ben Thanh. The horse faces local +z.
 function equestrianStatue(p: Place): THREE.Group {
   const g = group(p);
-  hedgedBed(g, 0.62);
-  for (let i = 0; i < 8; i++) {
-    const a = ((i + 0.5) / 8) * Math.PI * 2;
-    g.add(sphere(0.04, mat(AWNINGS[i % 2 === 0 ? 0 : 3]), { x: Math.cos(a) * 0.4, y: 0.08, z: Math.sin(a) * 0.4, segments: 4 }));
-  }
-  g.add(box(0.5, 0.08, 0.56, GRANITE, { y: 0.08 }));
-  g.add(box(0.38, 0.08, 0.46, GRANITE, { y: 0.16 }));
-  g.add(box(0.26, 0.48, 0.36, GRANITE, { y: 0.24 }));
-  g.add(box(0.3, 0.04, 0.4, GRANITE, { y: 0.72 }));
-  const top = 0.76;
+  g.add(cylinder(0.42, 0.44, 0.05, GRANITE, { segments: 16 }));
+  g.add(box(0.5, 0.08, 0.56, GRANITE, { y: 0.05 }));
+  g.add(box(0.38, 0.08, 0.46, GRANITE, { y: 0.13 }));
+  g.add(box(0.26, 0.48, 0.36, GRANITE, { y: 0.21 }));
+  g.add(box(0.3, 0.04, 0.4, GRANITE, { y: 0.69 }));
+  const top = 0.73;
   for (const [x, z] of [[-0.025, 0.08], [0.025, 0.08], [-0.025, -0.08], [0.025, -0.08]] as const) g.add(box(0.022, 0.1, 0.022, BRONZE, { x, y: top, z }));
   g.add(box(0.075, 0.08, 0.22, BRONZE, { y: top + 0.1 }));
   g.add(beam([0, top + 0.15, 0.09], [0, top + 0.25, 0.15], 0.05, BRONZE));
@@ -714,6 +711,28 @@ function equestrianStatue(p: Place): THREE.Group {
   g.add(cylinder(0.025, 0.032, 0.1, BRONZE, { y: top + 0.17, segments: 6 }));
   g.add(sphere(0.022, BRONZE, { y: top + 0.27, segments: 6 }));
   g.add(beam([0.03, top + 0.25, 0.01], [0.05, top + 0.34, 0.07], 0.012, BRONZE));
+  return g;
+}
+
+// Quach Thi Trang (1964), the student the square is named after: a white bust on a granite pedestal.
+function quachThiTrang(p: Place): THREE.Group {
+  const g = group(p);
+  g.add(box(0.16, 0.28, 0.16, GRANITE));
+  g.add(cylinder(0.045, 0.06, 0.07, STATUE, { y: 0.28, segments: 6 }));
+  g.add(sphere(0.035, STATUE, { y: 0.35, segments: 6 }));
+  return g;
+}
+
+// Traffic light on a street corner: a pole with two heads, red facing the avenue (+x) and green facing the cross street (+z).
+function signal(p: Place): THREE.Group {
+  const g = group(p);
+  g.add(cylinder(0.014, 0.018, 0.5, M.dark, { segments: 5 }));
+  for (const [ry, lens, y] of [[Math.PI / 2, SIGNAL_RED, 0.095], [0, SIGNAL_GREEN, 0.025]] as const) {
+    const head = group({ y: 0.38, ry });
+    head.add(box(0.045, 0.12, 0.035, M.dark));
+    head.add(disc(0.014, lens, { y, z: 0.018 }));
+    g.add(head);
+  }
   return g;
 }
 
@@ -853,23 +872,22 @@ export default function build(): CityScene {
   root.add(area(shoreBand(-9.92, -4.45, -1.5), LAWN, { h: 0.03 }));
   root.add(area(shoreBand(7.2, 9.92, -5.35), LAWN, { h: 0.03 }));
   root.add(area(roundRect(3.2, -9.9, 9.9, -5.85, 0.55), LAWN, { h: 0.03 }));
-  root.add(area(roundRect(-4.55, 3.05, -1.95, 7.0, 0.2), LAWN, { h: 0.03 }));
+  root.add(area(roundRect(-4.55, 3.05, -1.95, 7.55, 0.2), LAWN, { h: 0.03 }));
 
-  // Streets, the park ring and the roundabout in front of Ben Thanh.
-  for (const [x1, z1, x2, z2, w] of ROADS) root.add(road(x1, z1, x2, z2, w, { lines: w > 2, material: ASPHALT }));
+  // Streets, the park ring and the signalised crossroads at Ben Thanh's corner.
+  for (const [x1, z1, x2, z2, w] of ROADS) root.add(road(x1, z1, x2, z2, w, { lines: w > 1.5, material: ASPHALT }));
   root.add(area(roundRect(-2.4, -4.4, 3.15, 3.05, 0.7), ASPHALT, { h: 0.05 }));
-  root.add(area(ellipse(RB[0], RB[1], RB_R, RB_R, 40), ASPHALT, { h: 0.05 }));
-  for (const z of [-4.75, 3.35, 6.75]) root.add(crosswalk(V1_X, z, 1.1));
+  for (const z of [-4.75, 3.35, AVE_Z - AVE_W / 2 - 0.35, AVE_Z + AVE_W / 2 + 0.35]) root.add(crosswalk(V1_X, z, 1.1));
   for (const x of [3.7, 8.4]) root.add(crosswalk(x, -2.25, 0.9, { ry: Math.PI / 2 }));
   root.add(crosswalk(3.7, 1.05, 0.9, { ry: Math.PI / 2 }));
-  for (const z of [0.0, 6.55]) root.add(crosswalk(9.2, z, 0.9));
-  for (const x of [-3.6, 0.3, RB[0] - RB_R - 0.35, RB[0] + RB_R + 0.35]) root.add(crosswalk(x, AVE_Z, 2.2, { ry: Math.PI / 2 }));
+  for (const z of [0.0, AVE_Z - AVE_W / 2 - 0.35]) root.add(crosswalk(9.2, z, 0.9));
+  for (const x of [-3.6, 0.3, V1_X - 0.85, V1_X + 0.85, 5.9]) root.add(crosswalk(x, AVE_Z, AVE_W, { ry: Math.PI / 2 }));
   root.add(crosswalk(-1.5, 3.35, 0.9));
   root.add(crosswalk(-4.95, 3.35, 0.8));
-  // Paved plazas: the palm plaza, the apron round Ben Thanh, the Landmark 81 forecourt.
+  // Paved plazas: the palm plaza, the apron round Ben Thanh running out into its square, the Landmark 81 forecourt.
   root.add(patch(3.15, 1.75, PLAZA, { x: 0.425, z: 3.975, h: 0.045 }));
-  root.add(patch(5.1, 4.7, PLAZA, { x: 5.9, z: 4.1, h: 0.045 }));
-  root.add(patch(2.3, 0.6, PLAZA, { x: -3.2, z: 6.7, h: 0.045 }));
+  root.add(patch(5.1, 5.85, PLAZA, { x: 5.9, z: 4.675, h: 0.045 }));
+  root.add(patch(2.3, 1.15, PLAZA, { x: -3.2, z: 6.975, h: 0.045 }));
 
   // Oval park (30/4 Park) with its fountain and flag, in the middle of the traffic ring.
   root.add(area(ellipse(PARK[0], PARK[1], 1.68, 2.58), CURB, { h: 0.065 }));
@@ -900,7 +918,19 @@ export default function build(): CityScene {
   root.add(postOffice({ x: 5.9, z: -0.68 }));
   root.add(benThanh({ x: 5.9, z: 4.05 }));
   root.add(monument({ x: 0.4, y: 0.045, z: 3.95 }));
-  root.add(equestrianStatue({ x: RB[0], y: 0.05, z: RB[1], ry: Math.PI }));
+  // Ben Thanh square, as the 2025 renovation lays it out: lawns either side of the central walk with small shade trees that
+  // leave the market in view, Tran Nguyen Han back on his old spot facing the south gate, the Quach Thi Trang bust among the
+  // trees on the east lawn.
+  for (const x of [4.475, 7.325]) {
+    root.add(patch(1.53, 0.83, CURB, { x, z: 7.05, h: 0.05 }));
+    root.add(patch(1.45, 0.75, LAWN, { x, z: 7.05, h: 0.06 }));
+    for (const dx of [-0.58, -0.28, 0.28, 0.58]) root.add(sphere(0.035, mat(AWNINGS[dx < 0 ? 0 : 3]), { x: x + dx, y: 0.06, z: 7.36, segments: 4 }));
+  }
+  root.add(equestrianStatue({ x: 5.9, y: 0.045, z: 7.05, ry: Math.PI }));
+  root.add(quachThiTrang({ x: 7.4, y: 0.06, z: 7.1 }));
+  for (const [x, z] of [[3.95, 6.85], [4.95, 6.85], [4.45, 7.25], [6.85, 6.85], [7.95, 6.85], [7.95, 7.28]] as const) root.add(tree({ x, y: 0.06, z, s: 0.55 }));
+  // Signalised crossroads at the market's corner: a light on each corner.
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) root.add(signal({ x: V1_X + sx * 0.65, z: AVE_Z + sz * (AVE_W / 2 + 0.1) }));
 
   // Apartment blocks at the back right.
   const aptWall = mat(0xdcc6b8);
@@ -949,13 +979,13 @@ export default function build(): CityScene {
   // Shade trees fill the open ground on a jittered grid, clear of the river, streets and footprints.
   const blocked: [number, number, number, number][] = [
     [-4.9, -3.1, -2.3, 2.1], // palace and its lawn
-    [-4.55, 3.0, -1.9, 7.1], // Landmark 81 block, planted below
+    [-4.55, 3.0, -1.9, 7.65], // Landmark 81 block, planted below
     [-7.1, -9.6, -3.8, -6.6], // Opera House and its steps
     [-1.5, -9.8, 2.0, -4.4], // cathedral
     [-2.45, -4.45, 3.2, 3.1], // park ring
     [-7.1, -4.5, -2.3, -3.2], // under the bridge ramp
-    [-1.2, 3.0, 2.05, 7.1], // palm plaza and stalls
-    [3.1, -5.85, 9.95, 9.95], // shophouses, post office, Ben Thanh, front plaza
+    [-1.2, 3.0, 2.05, 7.65], // palm plaza and stalls
+    [3.1, -5.85, 9.95, 9.95], // shophouses, post office, Ben Thanh and its square, the avenue's east end
     [4.3, -8.5, 6.6, -6.7], // Bitexco podium
     [6.2, -9.75, 7.7, -8.35], // apartments
     [8.1, -9.55, 9.6, -8.05],
@@ -986,7 +1016,7 @@ export default function build(): CityScene {
     root.add(scatter({ x, z, w, d }, n, rand, (px, pz) => person({ x: px, y, z: pz }), avoid));
   crowd(0.4, 3.95, 3.0, 1.6, 5, 0.045, (x, z) => Math.hypot(x - 0.4, z - 3.95) < 0.6);
   crowd(0.45, 5.93, 2.6, 0.2, 4, 0);
-  crowd(5.9, 6.3, 4.6, 0.2, 4);
+  crowd(5.9, 6.55, 4.6, 0.12, 4);
   crowd(3.55, 4.0, 0.2, 3.6, 2);
   crowd(8.25, 4.0, 0.2, 3.6, 2);
   crowd(5.9, 0.45, 4.6, 0.12, 4, 0);
@@ -1007,24 +1037,16 @@ export default function build(): CityScene {
     onDeck(anim, outer, inner);
   };
   const ring = Array.from({ length: 28 }, (_, i): XZ => [PARK[0] + Math.cos((i / 28) * Math.PI * 2) * 1.95, PARK[1] - Math.sin((i / 28) * Math.PI * 2) * 2.9]);
-  // Round the roundabout counter-clockwise from above (traffic keeps right), from angle a0 to a1 in degrees at radius r.
-  const arc = (r: number, a0: number, a1: number, n = 6) =>
-    Array.from({ length: n + 1 }, (_, i): XZ => {
-      const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
-      return [RB[0] + Math.cos(a) * r, RB[1] - Math.sin(a) * r];
-    });
-  const market: XZ[] = [[2.75, 1.29], [8.96, 1.29], [8.96, 7.7], ...arc(1.2, 22, 158), [2.75, 7.7]];
-  const aveWest: XZ[] = [[9.0, 7.3], ...arc(1.2, 45, 135), [-4.71, 7.3], [-4.71, 2.84], [2.75, 2.84], [2.75, -9.0]];
-  const aveEast: XZ[] = [[2.45, -9.0], [2.45, 8.5], ...arc(1.2, 197, 343), [9.0, 8.5]];
+  // Avenue lanes: westbound 7.8 at the curb (the market loop) and 8.15, eastbound 8.8.
+  const market: XZ[] = [[2.75, 1.29], [8.96, 1.29], [8.96, 7.8], [2.75, 7.8]];
+  const aveWest: XZ[] = [[9.0, 8.15], [-4.71, 8.15], [-4.71, 2.84], [2.75, 2.84], [2.75, -9.0]];
+  const aveEast: XZ[] = [[2.45, -9.0], [2.45, 8.8], [9.0, 8.8]];
   ride(ring, 'bikes', 6, 0.9, 0, true);
   ride(ring, 'taxi', 3, 0.9, 0.5, true);
-  // Scooters circling the statue on the inner lane of the roundabout.
-  const circle = arc(0.95, 0, 360, 32).slice(0, -1);
-  ride(circle, 'bikes', 3, 0.7, 0, true);
-  ride(circle, 'bikes', 3, 0.7, 0.5, true);
+  ride(market, 'bikes', 4, 1.0, 0, true);
   ride(market, 'car', 3, 1.0, 0.5, true);
   // A swarm circling the Landmark 81 block: down the riverside road, along the avenue, back up past the stalls.
-  ride([[-5.19, 2.36], [-5.19, 8.5], [-1.26, 8.5], [-1.26, 2.36]], 'bikes', 6, 0.95, 0, true);
+  ride([[-5.19, 2.36], [-5.19, 8.8], [-1.26, 8.8], [-1.26, 2.36]], 'bikes', 6, 0.95, 0, true);
   ride(aveWest, 'taxi', 4, 1.1, 0.15);
   ride(aveEast, 'bikes', 6, 1.0, 0.45);
   ride([[9.0, -2.49], [3.0, -2.49], [3.0, -9.0]], 'bikes', 4, 1.05, 0.2);
