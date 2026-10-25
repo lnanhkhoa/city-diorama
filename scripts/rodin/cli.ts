@@ -3,7 +3,7 @@
  * Batch flow for Rodin shapes (docs/rodin-pipeline.md). Manifest: ./assets.ts.
  *
  *   bun run rodin status           what each asset needs next (default)
- *   bun run rodin brief [names…]   .rodin/BRIEF.md: Gemini chat prompts for missing
+ *   bun run rodin brief [names…]   .rodin/BRIEF.md: image prompts (Gemini or ChatGPT) for missing
  *                                  reference images, Rodin upload lists for the rest
  *   bun run rodin bake [names…]    bake every new or changed GLB, in parallel
  */
@@ -40,7 +40,7 @@ function stateOf(a: RodinAsset): State {
 }
 
 const NEXT: Record<State, string> = {
-  'need refs': 'Gemini image (bun run rodin brief)',
+  'need refs': 'reference image in Gemini or ChatGPT (bun run rodin brief)',
   'need glb': 'Image-to-3D in Rodin (bun run rodin brief)',
   ready: 'bun run rodin bake',
   stale: 'bun run rodin bake',
@@ -85,7 +85,7 @@ function select(names: string[], fallback: (a: RodinAsset) => boolean): RodinAss
   return names.length ? ASSETS.filter((a) => names.includes(a.name)) : ASSETS.filter(fallback);
 }
 
-/** Gemini prompts for assets missing a reference image, Rodin upload lists for the rest. */
+/** Image prompts for assets missing a reference image, Rodin upload lists for the rest. */
 function brief(names: string[]): void {
   const todo = select(names, (a) => ['need refs', 'need glb'].includes(stateOf(a)));
   const gemini = todo.filter((a) => !findRef(a));
@@ -104,15 +104,16 @@ function brief(names: string[]): void {
   );
   const rodinSections = rodin.map((a) => {
     const ref = findRef(a)!;
-    return `- \`${ref}\` → \`${glbPath(a)}\`${isTransparent(ref) ? '' : ' (opaque background: paint out the Gemini watermark, bottom right, before uploading)'}`;
+    return `- \`${ref}\` → \`${glbPath(a)}\`${isTransparent(ref) ? '' : ' (opaque background: paint out any watermark, e.g. the Gemini sparkle bottom right, before uploading)'}`;
   });
 
   const doc = [
     `# Rodin batch: ${gemini.length} assets need an image, ${rodin.length} ready for Rodin`,
     '',
-    '## 1. Reference images in Gemini',
+    '## 1. Reference images in Gemini or ChatGPT',
     '',
-    'One prompt per asset, each in its own Gemini chat; several can run at once. Save each image under the name shown',
+    'One prompt per asset, each in its own chat (Gemini in AI Studio adds no sparkle watermark; ChatGPT works too, with the same',
+    'white background); several can run at once. Save each image under the name shown',
     '(PNG, JPG or WebP; the name before the extension matters). Regenerate instead of saving when:',
     '',
     ...REJECT_IF.map((r) => `- ${r}`),
@@ -125,14 +126,16 @@ function brief(names: string[]): void {
     'presets **Use Recommended**, Agentic Mode off. Check the geometry preview (one object, no ground disc) and **Confirm**;',
     'then **Generate** the material and **Confirm** it too (without it the model is untextured and cannot be baked).',
     'Download **GLB** (not FBX): the zip holds `base_basic_pbr.glb`; save that one under the name shown. Then run',
-    '`bun run rodin bake`.',
+    '`bun run rodin bake <names>`. If an asset\'s `colours` count changed since its last bake, save the GLB to',
+    '`.rodin/pending/<name>.glb` instead: the city still passes the old number of materials, so bake it by name in the same',
+    'step that changes them (docs/rodin-pipeline.md §3).',
     '',
     rodin.length ? rodinSections.join('\n') : 'Nothing yet: run `bun run rodin brief` again once images are saved.',
     '',
   ].join('\n');
   mkdirSync(RODIN_DIR, { recursive: true });
   writeFileSync(`${RODIN_DIR}/BRIEF.md`, doc);
-  console.log(`${RODIN_DIR}/BRIEF.md: ${gemini.length} assets need a Gemini image, ${rodin.length} ready for Rodin`);
+  console.log(`${RODIN_DIR}/BRIEF.md: ${gemini.length} assets need a reference image, ${rodin.length} ready for Rodin`);
 }
 
 /** Child-process entry: bake one asset and write its module. */

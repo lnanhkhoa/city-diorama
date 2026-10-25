@@ -4,15 +4,31 @@ Source: `src/cities/list/kuala-lumpur.ts`. Part of the [city improvements](READM
 
 ## Status
 
-- **Budget now:** 53,896 tris, 139 draws (limits 90,000 / 220).
+- **Budget now:** 111,360 tris, 172 draws (limits 150,000 / 220), measured 2026-10-23 after the asset-quality pass below.
+- **Asset-quality pass 2026-10-23** (`plans/261022-0945-kuala-lumpur-asset-quality`). The 2026-10-22 critique against `assets/kuala-lumpur.jpeg` listed 20 assets. All of them except Batu and Murugan were rebuilt procedurally, with each pass checked against a capture and a pair sheet:
+  - **Petronas:** a 16-point star-and-lobe plan, straight to 55% of its height, five sloped setbacks, a pinnacle with a ring ball, fine pewter ribbons instead of zebra bands, and the round 44-storey annexes. It now costs 6.7k tris per tower, down from 12.6k.
+  - **Skybridge and Suria:** the skybridge sits at 37.6% on V legs from 26%. The blue Suria dome became a curved glazed front.
+  - **Merdeka 118:** a near-straight lofted shaft of large triangles in steel blue-grey, lit floor lines, a flat crown and an off-centre spire.
+  - **KL Tower:** no legs. A forested lathe Bukit Nanas, a layered head with three glazed bands, and a banded mast.
+  - **Sultan Abdul Samad:** cream sandstone, two storeys of arched arcades (`arcade()`), round turrets, metallic copper domes, a clock at 10:10, spirelets and a lower roof. The old blocks are arcaded and quieter, and the Masjid Jamek minarets are brick with white bands.
+  - **River:** teal water between stone parapet walls, with chamfered confluence corners. Both bridges have bowstring ribs, and boats and lanes stop short of the decks.
+  - **Monorail:** a slim guideway on T-piers and one rounded 4-car train.
+  - **Shophouses:** continuous terraces (`shophouseRow()`) with a five-foot way and street-parallel roofs.
+  - **Office towers:** five façade systems, all lit at night. The chimney house became a glazed pavilion.
+  - **Grounds and traffic:** olive lawns, KL Tower park paths and clumps, groves, a riverside park on the old asphalt void, and mixed car colours.
+- **Layout fixes in the same pass:**
+  - The west-road lane ended inside the Samad building and now stops at the plot.
+  - People stood in the tributary and the glass tower, and trees stood in the old block.
+  - `treeSpots` is reset on every build, and the new scatters have their own seeds.
 - **Fixed 2026-10-21:** `archBridge()`, road/bank overlaps, lamps and shophouses off the lanes, monorail end.
 - **Fixed 2026-10-21, second pass:** `masjidJamek()` added on a pavement forecourt at (-0.95,-2.2) beside the confluence (2 white onion domes, red-banded arcade, 2 banded minarets). Suria KLCC podium replaces the thin box at the tower bases (4.0x2.2, glass-domed atrium, fountain pool). Night glow: Samad arches (`archWin`), shophouse and old-block openings, a third of the Merdeka facets now use `windowMaterial`. KL Tower: red bands around the cabin ring, lit upper cabin band, taller red tip, three splayed legs. Murugan moved to the cave foot (7.0,-5.7), statue and cave mouth now `floodMat` (floodlit at night), stairs rebuilt to climb 10 steps to a lit cave mouth with portico and rails. East tree row at x=9.3 moved to z 0..2.2, clear of the shophouses. Forecourt people scatter moved off the podium.
-- **Left open:** the arch bridges stay shallow, and both boats (main leg, east leg) still pass through them because open paths loop and the arch only peaks at 0.11. The Batu cliff and the Murugan statue remain the procedural placeholders until the Rodin assets are baked. Masjid Negara (blue folded roof) and the empty back-right/front-left quarters are untouched.
-- **Next:** bake and swap in the Rodin Batu cliff and Murugan statue (keep stairs and cave mouth procedural, re-fit them to the baked cliff); shorten the boat paths to stop short of the bridges or raise the arch; Masjid Negara; park paths/pond around the KL Tower.
+- **Fixed 2026-10-22:** `batuCaves()` is the Rodin shape `batu-cliff` (4,972 tris) at (7.6, -7.6), height 4.8: part 0 (the cave interior) uses `CAVE`, dark by day and lit orange at night; jungle `M.leaf`, limestone `ROCK`. The rainbow staircase (10 steps, rails) climbs from the forecourt to the cave sill, measured off the bake at 0.26·H up. `murugan()` keeps its two plinth blocks and carries the Rodin `murugan-statue` (2,500 tris, `GOLD`, height 2.6) on the forecourt at (6.3, -5.0), beside the stairs. Two walker loops moved clear of the statue and the stair foot.
+- **Left open:** the Batu cliff (v1 bake: leaf shards, dark specks), the flat-yellow Murugan and the bar-chart rainbow stairs. Their re-generation was skipped on 2026-10-23, and the v1 inputs were restored. The asset-quality plan records the corner-safe cliff design (two blocks with a central cleft, W ≈ 0.85 H) for a later pass. Masjid Negara is untouched.
+- **Next:** Batu ensemble (re-generated cliff and two-tone statue, stairs into the cleft, metallic gold via a `floodMat` metalness option); Masjid Negara.
 
 ## Audit
 
-Original findings, written before the 2026-10-21 fix pass; line numbers refer to the code at that date. Reference: assets/kuala-lumpur.jpeg (+ assets/kuala-lumpur-2.jpeg). Budget at audit time: ~51000 tris, 136 draws (headroom ~39k tris / ~84 draws).
+Original findings, written before the 2026-10-21 fix pass; line numbers refer to the code at that date. Reference: assets/kuala-lumpur.jpeg (a second poster used then has since been removed). Budget at audit time: ~51000 tris, 136 draws (headroom ~39k tris / ~84 draws).
 
 Observed in day + night screenshots at 1400x1100; no console errors.
 

@@ -4,11 +4,11 @@ Source: `src/cities/list/rio-de-janeiro.ts`. Part of the [city improvements](REA
 
 ## Status
 
-- **Budget now:** 30,428 tris, 152 draws (limits 90,000 / 220).
+- **Budget now:** 54,452 tris, 179 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Visible bay with boats; cable car clears the rock; pitch lines. Night lighting: Christ floodlit (`floodMat`), lit favela windows, Maracanã floodlights and lit pitch, lit cable-car cabins and stations, floodlight masts on the beach.
 - **Left open by the fix:** the Sugarloaf is smaller (height 4.4) and sits in the back-right corner. The boat at (3.8, -5.8) is close to the rock.
-- **In progress:** Corcovado via Rodin. The manifest entry `corcovado` is in `scripts/rodin/assets.ts` and `bun run rodin brief corcovado` writes its Gemini prompt; it needs the reference image, then the Rodin GLB.
-- **Next:** after the Corcovado bake, a tiered pedestal and viewing platform for Christ; then the missing items below (favela strip on the right edge, Copacabana Palace, street life).
+- **Fixed 2026-10-22:** `corcovado()` is the Rodin shape `corcovado` (3,000 tris, parts rainforest + granite) at (-6.4, -6.4), height 6.4, turned π/4 so its sheer cliff faces the camera. Christ stands on a two-tier terrace (promenade-white ring, floodlit stone step) placed on the summit plateau measured off the bake. Christ's top is now at about 8.9 (was 10.9). The 28 random canopy spheres are gone, so later `rand()` placements (favela colours, beach umbrellas) shifted.
+- **Next:** the missing items below (favela strip on the right edge, Copacabana Palace, street life).
 
 ## Audit
 

@@ -1,24 +1,28 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
-  Animator, M, archHole, area, beam, box, building, bus, car, cone, createBase, crosswalk, cylinder, floodMat, gableRoof, group,
-  hipRoof, lamp, lampMaterial, mansardRoof, mat, mergeStatic, patch, person, prism, profile, rng, road, scatter, shape, sphere, tree,
-  tube, waterMat, windowMaterial, type Place,
+  Animator, M, archHole, area, beam, box, building, bus, car, cone, createBase, crosswalk, cylinder, floodMat, floorLinesGlass,
+  gableRoof, group, hipRoof, lamp, lampMaterial, mansardRoof, mat, mergeStatic, patch, person, prism, profile, rng, road, scatter,
+  shape, sphere, tree, tube, vietnamFlag, waterMat, windowMaterial, type Place,
 } from '../../kit';
 import type { CityScene } from '../types';
+import LANDMARK_81 from '../shapes/landmark-81.shape';
 import MOTORBIKE from '../shapes/motorbike-lite.shape';
 
 // Layout follows assets/ho-chi-minh.png: positions were read off the poster through a homography fitted to the plinth
 // corners, and the roads, river and plazas traced on a rectified top-down copy of its ground plane. The Saigon River runs
 // along the left (x = -10) edge; the Ba Son bridge crosses it at the back and ramps down behind the Independence Palace,
-// which faces the oval park and its fountain. The Notre-Dame Cathedral and the Opera House stand behind the park, Bitexco
-// and three apartment blocks at the back right. The shophouse rows, the Central Post Office and Ben Thanh Market fill the
-// right; Landmark 81, the palm plaza and the night-market stalls the left front. The avenue along the front edge carries
+// which faces the oval park and its fountain. The Notre-Dame Cathedral and the Opera House stand behind the park; Bitexco
+// stands alone on a round forecourt at the back right, with two apartment blocks along the edge beyond it. A row of
+// shophouses, the Central Post Office and Ben Thanh Market fill the right; Landmark 81, the palm plaza and the night-market
+// stalls the left front. The avenue along the front edge carries
 // most of the traffic past the Ben Thanh square, where Tran Nguyen Han on horseback faces the south gate and the Quach Thi
 // Trang bust stands on a lawn at the corner; the junction at the market's corner is a signalised crossroads, as it has been
 // since the roundabout made way for the metro station. The river stays inside a stone curb along the plinth's top edge.
 
 type Mat = THREE.Material;
 type XZ = [number, number];
+type V3 = [number, number, number];
 type Face = '+x' | '-x' | '+z' | '-z';
 type PackKind = 'car' | 'taxi' | 'bikes';
 
@@ -57,12 +61,6 @@ const CABLE = floodMat(0xf4f4f0, 0x8fd2ff, 1.8, { roughness: 0.4 });
 const BEACON = floodMat(0xd9d4cc, 0xff2211, 2.5);
 const SLATE = mat(0x5f5c66, { roughness: 0.7 });
 const SPIRE = mat(0xd6dae0, { roughness: 0.5 });
-const L81_GLASS = mat(0x86a6c4, { roughness: 0.2, metalness: 0.5 });
-const L81_FRAME = mat(0xdfe7ee, { roughness: 0.4 });
-// Bitexco's glass: pale steel blue by day, washed in blue LED light at night.
-const BITEXCO_GLASS = floodMat(0x9db4c9, 0x6fa8ff, 0.55, { roughness: 0.25 });
-const FIN = mat(0xd9e2ea, { roughness: 0.35, metalness: 0.2 });
-const BELT = mat(0x56616e, { roughness: 0.3, metalness: 0.5 });
 const SPRAY = mat(0xeaf6fb, { roughness: 0.2, transparent: true, opacity: 0.75 });
 const AWNINGS = [0xc8433a, 0x2f7a4f, 0x3d6fb6, 0xe0b43a, 0xe2702e];
 const SHOP_WALLS = [0xf2c95e, 0xf4dd98, 0xf0b98e, 0xd7e3b5, 0xf3e6c8, 0xe9a96b].map((c) => mat(c));
@@ -101,6 +99,8 @@ const V1_X = 2.6; // street past the cathedral, the park and Ben Thanh
 const AVE_Z = 8.4; // avenue along the front edge
 const AVE_W = 1.6;
 const PARK: XZ = [0.15, -0.65]; // oval lawn centre
+const BITEXCO_AT: XZ = [5.45, -7.6];
+const BITEXCO_PLAZA_R = 1.98; // its forecourt; the podium reaches 1.6 from the centre, its entrance canopy 1.8 in the opening
 
 // Streets [x1, z1, x2, z2, width]; trees and props keep clear of them.
 const ROADS: [number, number, number, number, number][] = [
@@ -175,29 +175,6 @@ function shoreBand(z0: number, z1: number, x1: number): XZ[] {
 // Shared details
 // ---------------------------------------------------------------------------
 
-function addMesh(g: THREE.Group, geo: THREE.BufferGeometry, m: Mat): void {
-  const o = new THREE.Mesh(geo, m);
-  o.castShadow = true;
-  o.receiveShadow = true;
-  g.add(o);
-}
-
-// Vietnamese flag: red field with a gold star on both faces, on a pole of height h.
-function flag(p: Place & { h?: number; s?: number }): THREE.Group {
-  const g = group(p);
-  const h = p.h ?? 1.3;
-  const s = p.s ?? 1;
-  g.add(cylinder(0.015 * s, 0.022 * s, h, M.steel, { segments: 5 }));
-  g.add(sphere(0.025 * s, M.gold, { y: h, segments: 5 }));
-  g.add(box(0.5 * s, 0.33 * s, 0.015, M.red, { x: 0.25 * s, y: h - 0.36 * s }));
-  for (const side of [1, -1]) {
-    const star = cone(0.07 * s, 0.012, M.gold, { x: 0.25 * s, y: h - 0.195 * s, z: side * 0.008, segments: 5 });
-    star.rotation.x = (side * Math.PI) / 2;
-    g.add(star);
-  }
-  return g;
-}
-
 /** Arched window or doorway `w` wide whose arch springs at `h`; local +z points out of the wall. */
 function archWin(w: number, h: number, glass: Mat, p: Place): THREE.Mesh {
   return profile(archHole(0, w, h, 4), 0.02, glass, p);
@@ -236,145 +213,303 @@ function onFace(g: THREE.Group, w: number, d: number, f: Face, n: number, inset:
 // Landmarks
 // ---------------------------------------------------------------------------
 
-// Landmark 81 (461 m): nine square glass tubes bundled like bamboo. The corner tubes stop lower, so the tower steps up to
-// the central one, which carries a slim two-stage crown, a spire and an aviation light. Pale frames run up every tube
-// corner and glass floor bands glow at night. A podium with a glazed ground floor, an entrance canopy and flags.
+// Landmark 81 (461 m): baked Rodin shape (scripts/rodin/assets.ts): nine bundled square tubes stepping up to the central
+// one, its crown and needle spire, on a stepped podium. The bake's colour split smeared frames into the glass, so one
+// glass material covers it, and its shader paints the floor lines (`floorLinesGlass`): glazing by day, lit floors at
+// night. Rodin made it stockier than the real tower, so the footprint is narrowed (`xzScale`) to the old procedural
+// tower's: tubes ~1.5 wide, podium ~2.3 at ground. The base plate and the lowest podium tier (the bake's bottom 0.04)
+// are sunk below ground. An aviation light tops the spire; the flags stand in front of the podium.
+const L81_H = 12.4;
+const L81_SINK = 0.04;
+// The crown and needle spire (the bake's top fifth, above the central tube's last setback) are a pale metal frame by day
+// and lit red at night, as the real tower's LED crown is.
+const L81_GLASS = floorLinesGlass(0x86a6c4, { height: L81_H, first: 0.055, step: 0.068, count: 12, width: 0.01 }, {
+  roughness: 0.2, metalness: 0.5, crown: { from: 0.79, color: 0xc9d3db, glow: 0xe8101e, peak: 1.1 },
+});
+// LED strips on the tube corners, grey by day, red at night like the crown, from about half height up to the crown. Each
+// is a convex vertical corner edge of the bake (found where two faces meet sharply): plan position, height range as
+// fractions of the bake before the footprint is narrowed, and the outward direction the strip stands proud along.
+const L81_LED = floodMat(0x8f9aa3, 0xe8101e, 1.2);
+const L81_STRIPS: [number, number, number, number, number, number][] = [
+  [0.0248, -0.0277, 0.676, 0.79, 1, -1], // central tube, all four corners
+  [-0.0266, 0.0176, 0.687, 0.79, -1, 1],
+  [0.0248, 0.0202, 0.68, 0.79, 1, 1],
+  [-0.0266, -0.0277, 0.68, 0.79, -1, -1],
+  [0.0234, 0.0202, 0.476, 0.558, 1, 1], // outer tubes
+  [0.0556, 0.0213, 0.523, 0.671, 0.3, 1],
+  [-0.0555, 0.0169, 0.477, 0.622, -0.3, 1],
+  [-0.0239, -0.0614, 0.511, 0.671, -1, -0.8],
+  [-0.0556, -0.0288, 0.453, 0.576, -0.4, -1],
+];
 function landmark81(p: Place): THREE.Group {
   const g = group(p);
-  const ph = 0.34;
-  g.add(box(2.3, ph, 2.3, L81_FRAME));
-  g.add(box(2.33, 0.17, 2.33, windowMaterial, { y: 0.05 }));
-  g.add(box(2.38, 0.05, 2.38, L81_FRAME, { y: ph - 0.05 }));
-  g.add(box(0.9, 0.035, 0.42, L81_FRAME, { y: 0.24, z: 1.36 }));
-  for (const x of [-0.4, 0.4]) g.add(cylinder(0.015, 0.015, 0.24, M.steel, { x, z: 1.52, segments: 4 }));
-  const c = 0.5;
-  // Tube heights by [x column][z row]; the lowest corner faces the default camera, so every setback shows.
-  const heights = [
-    [7.4, 9.0, 6.6],
-    [9.4, 10.2, 8.4],
-    [8.0, 8.8, 5.6],
-  ];
-  heights.forEach((col, i) =>
-    col.forEach((h, k) => {
-      const x = (i - 1) * c;
-      const z = (k - 1) * c;
-      g.add(box(c - 0.03, h, c - 0.03, L81_GLASS, { x, y: ph, z }));
-      for (let y = ph + 0.3; y < ph + h - 0.2; y += 0.42) g.add(box(c - 0.01, 0.14, c - 0.01, windowMaterial, { x, y, z }));
-      for (const [sx, sz] of CORNERS) g.add(box(0.03, h, 0.03, L81_FRAME, { x: x + sx * (c / 2 - 0.015), y: ph, z: z + sz * (c / 2 - 0.015) }));
-      g.add(box(c + 0.01, 0.06, c + 0.01, L81_FRAME, { x, y: ph + h, z }));
-    }),
-  );
-  const top = ph + heights[1][1] + 0.06;
-  g.add(box(0.34, 0.6, 0.34, L81_GLASS, { y: top }));
-  g.add(box(0.37, 0.05, 0.37, L81_FRAME, { y: top + 0.6 }));
-  g.add(box(0.2, 0.42, 0.2, L81_GLASS, { y: top + 0.65 }));
-  g.add(cylinder(0.018, 0.045, 0.75, M.steel, { y: top + 1.07, segments: 6 }));
-  g.add(sphere(0.03, BEACON, { y: top + 1.8, segments: 6 }));
-  for (const x of [-0.95, -0.7, 0.7, 0.95]) g.add(flag({ x, z: 1.4, h: 0.75, s: 0.5 }));
+  g.add(shape(LANDMARK_81, L81_GLASS, { y: -L81_SINK * L81_H, height: L81_H, xzScale: 0.7 }));
+  const xz = L81_H * 0.7;
+  for (const [x, z, t0, t1, nx, nz] of L81_STRIPS) {
+    const out = 0.012 / Math.hypot(nx, nz);
+    g.add(box(0.03, (t1 - t0) * L81_H, 0.03, L81_LED, { x: x * xz + nx * out, y: (t0 - L81_SINK) * L81_H, z: z * xz + nz * out }));
+  }
+  g.add(sphere(0.03, BEACON, { y: (1 - L81_SINK) * L81_H, segments: 6 }));
+  for (const x of [-0.95, -0.7, 0.7, 0.95]) g.add(vietnamFlag({ x, z: 1.4, h: 0.75, s: 0.5 }));
   return g;
 }
 
-// Bitexco Financial Tower (262 m), a lotus bud: elliptical glass floors that swell a little and then taper, a crown cut on a
-// slant that rises away from the helipad, and the helipad cantilevered toward the river three quarters of the way up. A
-// pale spine climbs the helipad side from the podium to the crown, a pale lip edges the slanted cut, and mullions and floor
-// fins grid the glass; two dark glass belts circle it. It stands on a three-tier podium of rounded glazed terraces with a
-// roof garden. The glass glows at night.
-function bitexco(p: Place): THREE.Group {
-  const g = group(p);
-  const H = 6.5; // shaft height on the helipad side
-  const CROWN = 0.9; // the crown's high side rises this much more
-  const RX = 0.72;
-  const RZ = 0.5;
-  const NS = 20;
-  const NY = 16;
-  const hx = -Math.SQRT1_2; // helipad side: toward the river
-  const hz = Math.SQRT1_2;
-  // Podium terraces, bottom to top: half-width, half-depth, corner radius, height. Each steps in, like the real one.
-  const TIERS: [number, number, number, number][] = [[1.1, 0.85, 0.42, 0.2], [0.98, 0.74, 0.36, 0.18], [0.86, 0.63, 0.3, 0.16]];
-  let base = 0;
-  for (const [w, d, r, h] of TIERS) {
-    g.add(prism(roundRect(-w, -d, w, d, r), h, FIN, { y: base }));
-    // Glazed band set into the terrace face, and a pale lip round its roof.
-    g.add(prism(roundRect(-w - 0.012, -d - 0.012, w + 0.012, d + 0.012, r), h * 0.55, windowMaterial, { y: base + h * 0.2 }));
-    g.add(prism(roundRect(-w - 0.03, -d - 0.03, w + 0.03, d + 0.03, r + 0.03), 0.03, M.white, { y: base + h - 0.03 }));
-    base += h;
-  }
-  const taper = (y: number) => {
-    const t = y / (H + CROWN);
-    return 1 + 0.1 * Math.sin(Math.PI * Math.min(1, t * 1.7)) - 0.52 * t * t;
+// Bitexco Financial Tower (262 m, 68 floors; Carlos Zapata, 2010), a lotus bud, built from its photographs. The glass
+// shaft swells a little at a third of its height and then tapers; above the swell its south side, toward the helipad,
+// recedes faster than the north, so the bud leans back and ends in a crown cut on a slant that rises away from the
+// helipad. A glass drum leans out of the shaft's south side as the shaft narrows, drawing the curved petal seam across
+// the facade, and carries the helipad on a dark cantilever dish at the 52nd floor (191 m); the bud tip rises behind it
+// with a silver fin along its edge. Dark mechanical bands ring the shaft at 42% and under the helipad. Shaft, drum and
+// crown roof are one smooth skin of `BITEXCO_GLASS`, whose shader paints the floor lines (glazing by day, lit floors at
+// night) under a faint blue LED wash (a stronger glow swamps the shading). Local +z is the helipad side; turning it -π/4
+// aims it at the river, as on the real tower. It rises from Icon 68, the five-storey podium: two tiers of curved white
+// walls with ribbon windows and roof gardens, entered from the forecourt's opening.
+const BITEXCO_H = 8.2; // crown peak
+const BITEXCO_HELI = 5.97; // helipad deck: 191 of 262 m
+// Colours from daylight photographs: blue-green glass with dark fin shadows for floor lines, silver-grey frames, a dark
+// grey-green cantilever dish, mechanical bands and petal seam.
+const BITEXCO_GLASS = floorLinesGlass(0x5296a3, { height: BITEXCO_H, first: 0.116, step: 0.068, count: 13, width: 0.008 }, { roughness: 0.25, line: 0x2f6871, glow: 0x3d6fd6, peak: 0.16 });
+const BITEXCO_FRAME = mat(0xa9b4b8, { roughness: 0.35, metalness: 0.5 });
+const BITEXCO_DARK = mat(0x2f3d42, { roughness: 0.35, metalness: 0.4 });
+const BITEXCO_WALL = floodMat(0xe9edf0, 0xfff1d8, 0.35);
+const MARK_YELLOW = mat(0xe0b43a);
+
+/** Smooth curve through `[t, value]` keys in increasing t (monotone cubic, so it never overshoots a key), clamped at the ends. */
+function keyed(keys: [number, number][]): (t: number) => number {
+  const n = keys.length;
+  const h = keys.slice(1).map(([t], i) => t - keys[i][0]);
+  const d = keys.slice(1).map(([, v], i) => (v - keys[i][1]) / h[i]);
+  const m = keys.map((_, i) => {
+    if (i === 0) return d[0];
+    if (i === n - 1) return d[n - 2];
+    if (d[i - 1] * d[i] <= 0) return 0;
+    const w1 = 2 * h[i] + h[i - 1];
+    const w2 = h[i] + 2 * h[i - 1];
+    return (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]);
+  });
+  return (t) => {
+    if (t <= keys[0][0]) return keys[0][1];
+    if (t >= keys[n - 1][0]) return keys[n - 1][1];
+    let k = 0;
+    while (t > keys[k + 1][0]) k++;
+    const s = (t - keys[k][0]) / h[k];
+    const s2 = s * s;
+    const s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * keys[k][1] + (s3 - 2 * s2 + s) * h[k] * m[k] + (3 * s2 - 2 * s3) * keys[k + 1][1] + (s3 - s2) * h[k] * m[k + 1];
   };
-  const topAt = (a: number) => H + (CROWN * (1 - (Math.cos(a) * hx + Math.sin(a) * hz))) / 2;
-  /** Point on the glass at angle `a`, floor row `j` of NY, pushed `out` beyond the surface (for ribs). */
-  const at = (j: number, a: number, out = 1): [number, number, number] => {
-    const y = (topAt(a) * j) / NY;
-    const r = taper(y) * out;
-    return [Math.cos(a) * RX * r, base + y, Math.sin(a) * RZ * r];
-  };
-  const col = (i: number) => (i / NS) * Math.PI * 2;
+}
+
+/** Mesh that casts and receives shadows, like every kit solid. */
+function solid(geo: THREE.BufferGeometry, m: Mat): THREE.Mesh {
+  const o = new THREE.Mesh(geo, m);
+  o.castShadow = true;
+  o.receiveShadow = true;
+  return o;
+}
+
+/**
+ * Smooth skin through closed rings of equal length, each list running from the first ring to the last. Normals average
+ * along a list and round the seam; separate lists share no vertices, so their meeting edges stay crisp. Rings run with
+ * angle 0 at +z and π/2 at +x; a list rising faces out, a list running inward at one height faces up.
+ */
+function skin(...lists: V3[][][]): THREE.BufferGeometry {
   const pos: number[] = [];
-  for (let j = 0; j <= NY; j++) for (let i = 0; i < NS; i++) pos.push(...at(j, col(i)));
   const idx: number[] = [];
-  for (let j = 0; j < NY; j++) {
-    for (let i = 0; i < NS; i++) {
-      const a = j * NS + i;
-      const b = j * NS + ((i + 1) % NS);
-      idx.push(a, a + NS, b, b, a + NS, b + NS);
+  for (const rings of lists) {
+    const n = rings[0].length;
+    const base = pos.length / 3;
+    for (const r of rings) for (const p of r) pos.push(...p);
+    for (let j = 0; j < rings.length - 1; j++) {
+      for (let i = 0; i < n; i++) {
+        const a = base + j * n + i;
+        const b = base + j * n + ((i + 1) % n);
+        idx.push(a, b, a + n, b, b + n, a + n);
+      }
     }
   }
-  const shaft = new THREE.BufferGeometry();
-  shaft.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  shaft.setIndex(idx);
-  shaft.computeVertexNormals();
-  addMesh(g, shaft, BITEXCO_GLASS);
-  // Mullions on every other column (two floors per segment: the city is near the triangle cap), the spine up the helipad
-  // side, and the lip round the slanted cut.
-  for (let i = 0; i < NS; i += 2) {
-    for (let j = 0; j < NY; j += 2) g.add(beam(at(j, col(i), 1.01), at(j + 2, col(i), 1.01), 0.016, FIN));
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Flat cap over a planar ring (triangle fan from its centroid), facing up for rings ordered as in `skin`. */
+function fan(ring: V3[]): THREE.BufferGeometry {
+  const c = [0, 1, 2].map((k) => ring.reduce((s, p) => s + p[k], 0) / ring.length);
+  const pos = [...c, ...ring.flat()];
+  const idx: number[] = [];
+  for (let i = 0; i < ring.length; i++) idx.push(0, 1 + i, 1 + ((i + 1) % ring.length));
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** `n` points round a circle at height `y`, ordered as `skin` expects. */
+function circle(cx: number, y: number, cz: number, r: number, n: number): V3[] {
+  return Array.from({ length: n }, (_, i): V3 => [cx + r * Math.sin((i / n) * Math.PI * 2), y, cz + r * Math.cos((i / n) * Math.PI * 2)]);
+}
+
+/** Superellipse plan, half-sizes `a` (x) by `b` (z): exponent 2 is an ellipse, higher is squarer. Ordered as `skin` expects. */
+function superellipse(a: number, b: number, e: number, n = 48): XZ[] {
+  return Array.from({ length: n }, (_, i): XZ => {
+    const s = Math.sin((i / n) * Math.PI * 2);
+    const c = Math.cos((i / n) * Math.PI * 2);
+    return [a * Math.sign(s) * Math.abs(s) ** (2 / e), b * Math.sign(c) * Math.abs(c) ** (2 / e)];
+  });
+}
+
+const lift = (outline: XZ[], y: number): V3[] => outline.map(([x, z]): V3 => [x, y, z]);
+
+// Shaft plan at height fraction t: an ellipse from its south end (+z, the helipad side) to its north end, and its
+// half-width across (x). Read off photographs from the river, the long axis running through the helipad, then widened
+// by a quarter as the poster draws it, so the bud still reads at the tile's scale.
+const BIT_S = keyed([[0, 0.93], [0.3, 0.97], [0.52, 0.76], [0.73, 0.6], [0.85, 0.36], [1, -0.12]]);
+const BIT_N = keyed([[0, -0.93], [0.3, -0.97], [0.52, -0.86], [0.73, -0.76], [0.85, -0.73], [1, -0.68]]);
+const BIT_W = keyed([[0, 0.72], [0.3, 0.75], [0.52, 0.7], [0.73, 0.56], [0.85, 0.46], [1, 0.28]]);
+/** Crown cut: a plane rising 40° away from the helipad to the peak at the shaft's north end. */
+const bitexcoCut = (z: number) => BITEXCO_H - (z - BIT_N(1)) * Math.tan(0.7);
+// Glass drum under the helipad, leaning out toward it: axis, radius and height at its foot (inside the shaft) and its head
+// (under the dish).
+const DRUM: [XZ, XZ] = [[0.12, 0.3], [0.12, 0.38]];
+const DRUM_R: [number, number] = [0.41, 0.44];
+const DRUM_Y: [number, number] = [3.6, 5.72];
+const HELI_AT: XZ = [0.12, 0.7];
+const HELI_R = 0.6;
+
+/** Point on the shaft's glass at plan angle `a` (0 south, π/2 +x) and height `y`, pushed `out` beyond it. */
+function bitexcoAt(a: number, y: number, out = 0): V3 {
+  const t = y / BITEXCO_H;
+  const s = BIT_S(t);
+  const n = BIT_N(t);
+  return [(BIT_W(t) + out) * Math.sin(a), y, (s + n) / 2 + ((s - n) / 2 + out) * Math.cos(a)];
+}
+
+/** Height at which plan angle `a` meets the crown cut. */
+function bitexcoTop(a: number): number {
+  let y = BITEXCO_H;
+  for (let k = 0; k < 6; k++) y = bitexcoCut(bitexcoAt(a, y)[2]);
+  return y;
+}
+
+/** How far out of the shaft the point (x, y, z) lies: below 1 inside, above 1 outside. */
+function shaftLevel([x, y, z]: V3): number {
+  const t = y / BITEXCO_H;
+  const s = BIT_S(t);
+  const n = BIT_N(t);
+  return (x / BIT_W(t)) ** 2 + ((2 * z - s - n) / (s - n)) ** 2;
+}
+
+/** Point on the drum's glass at angle `a` round its axis (0 south, π/2 +x) and height `y`, pushed `out` beyond it. */
+function drumAt(a: number, y: number, out = 0): V3 {
+  const f = (y - DRUM_Y[0]) / (DRUM_Y[1] - DRUM_Y[0]);
+  const r = DRUM_R[0] + (DRUM_R[1] - DRUM_R[0]) * f + out;
+  return [DRUM[0][0] + (DRUM[1][0] - DRUM[0][0]) * f + r * Math.sin(a), y, DRUM[0][1] + (DRUM[1][1] - DRUM[0][1]) * f + r * Math.cos(a)];
+}
+
+/**
+ * The petal seam, where the drum leaves the shaft: a U from the drum's head on one side down to the point where the
+ * drum first breaks through the glass, and up again on the other. Points stand just proud of the drum.
+ */
+function drumSeam(): THREE.Vector3[] {
+  /** The drum's angle that stands furthest out of the shaft at height `y`, and how far. */
+  const peak = (y: number): [number, number] => {
+    let best: [number, number] = [0, 0];
+    for (let d = -90; d <= 90; d++) {
+      const v = shaftLevel(drumAt((d * Math.PI) / 180, y));
+      if (v > best[1]) best = [(d * Math.PI) / 180, v];
+    }
+    return best;
+  };
+  let lo = DRUM_Y[0];
+  let hi = DRUM_Y[1];
+  for (let k = 0; k < 30; k++) {
+    const y = (lo + hi) / 2;
+    if (peak(y)[1] < 1) lo = y;
+    else hi = y;
   }
-  const spineA = Math.atan2(hz / RZ, hx / RX);
-  for (let j = 0; j < NY; j++) g.add(beam(at(j, spineA, 1.04), at(j + 1, spineA, 1.04), 0.07, M.white));
-  for (let i = 0; i < NS; i++) g.add(beam(at(NY, col(i), 1.01), at(NY, col(i + 1), 1.01), 0.04, M.white));
-  // Slanted crown: a flat cap over the top ring.
-  const rim = Array.from({ length: NS }, (_, i) => at(NY, col(i)));
-  const mid = [0, 1, 2].map((k) => rim.reduce((s, q) => s + q[k], 0) / NS);
-  const capPos: number[] = [];
-  for (let i = 0; i < NS; i++) capPos.push(...mid, ...rim[(i + 1) % NS], ...rim[i]);
-  const cap = new THREE.BufferGeometry();
-  cap.setAttribute('position', new THREE.Float32BufferAttribute(capPos, 3));
-  cap.computeVertexNormals();
-  addMesh(g, cap, FIN);
-  for (let y = 0.32; y < H - 0.15; y += 0.3) {
-    const r = taper(y);
-    const fin = cylinder(1, 1, 0.035, FIN, { y: base + y, segments: NS, open: true });
-    fin.scale.set(RX * r + 0.012, 1, RZ * r + 0.012);
-    g.add(fin);
+  const side = (sign: number) => Array.from({ length: 17 }, (_, k) => {
+    const y = hi + (DRUM_Y[1] - hi) * (k / 16) ** 2;
+    let a0 = peak(y)[0]; // outside the shaft
+    let a1 = a0 + sign * Math.PI; // inside
+    for (let i = 0; i < 30; i++) {
+      const a = (a0 + a1) / 2;
+      if (shaftLevel(drumAt(a, y)) < 1) a1 = a;
+      else a0 = a;
+    }
+    return new THREE.Vector3(...drumAt(a0, y, 0.01));
+  });
+  return [...side(-1).reverse(), ...side(1).slice(1)];
+}
+
+function bitexco(p: Place): THREE.Group {
+  const g = group({ ...p, ry: -Math.PI / 4 });
+  const NA = 64;
+  const NY = 30;
+  const angle = (i: number) => (i / NA) * Math.PI * 2;
+  // Shaft rows run from the ground to the crown cut, so the top row lies in the cut's plane.
+  const tops = Array.from({ length: NA }, (_, i) => bitexcoTop(angle(i)));
+  const shaft = Array.from({ length: NY + 1 }, (_, j) => tops.map((top, i) => bitexcoAt(angle(i), (top * j) / NY)));
+  const drumRing = (y: number, n: number, out = 0) => Array.from({ length: n }, (_, i) => drumAt((i / n) * Math.PI * 2, y, out));
+  const drum = DRUM_Y.map((y) => drumRing(y, 40));
+  // Crown: a glass roof in the cut's plane, inside a silver lip that overhangs the walls a little.
+  const rim = shaft[NY];
+  const mid = [0, 1, 2].map((k) => rim.reduce((s, q) => s + q[k], 0) / NA);
+  const scaled = (s: number) => rim.map((q): V3 => [mid[0] + (q[0] - mid[0]) * s, mid[1] + (q[1] - mid[1]) * s, mid[2] + (q[2] - mid[2]) * s]);
+  const inner = scaled(0.84);
+  const outer = scaled(1.04);
+  const drop = (ring: V3[]) => ring.map(([x, y, z]): V3 => [x, y - 0.035, z]);
+  g.add(solid(mergeGeometries([skin(shaft, drum), fan(inner)]), BITEXCO_GLASS));
+  g.add(solid(skin([drop(outer), outer], [outer, inner], [drop(rim), drop(outer)]), BITEXCO_FRAME));
+  g.add(tube(drumSeam(), 0.018, BITEXCO_DARK, { segments: 48 }));
+  g.add(sphere(0.03, BEACON, { y: BITEXCO_H - 0.02, z: BIT_N(1), segments: 6 }));
+  // Dark mechanical bands round the shaft: one at 42%, one under the helipad, which the drum's collar continues.
+  const band = (y0: number, y1: number) => [y0, y1].map((y) => Array.from({ length: NA }, (_, i) => bitexcoAt(angle(i), y, 0.008)));
+  g.add(solid(skin(band(3.36, 3.52), band(DRUM_Y[1] - 0.12, DRUM_Y[1])), BITEXCO_DARK));
+  // Helipad: the drum's dark collar and the cantilever dish from its head to the deck, which carries a silver parapet with
+  // the landing lights along it, and the touchdown circle and H on the part clear of the bud tip.
+  const [hx, hz] = HELI_AT;
+  const deckY = BITEXCO_HELI - 0.05;
+  g.add(solid(skin(
+    [DRUM_Y[1] - 0.12, DRUM_Y[1]].map((y) => drumRing(y, 40, 0.006)),
+    [drumRing(DRUM_Y[1], 48), circle(hx, deckY, hz, HELI_R, 48)],
+  ), BITEXCO_DARK));
+  g.add(cylinder(HELI_R, HELI_R, 0.05, ASPHALT, { x: hx, y: deckY, z: hz, segments: 48 }));
+  const parapet = [HELI_R + 0.02, HELI_R].map((r) => [BITEXCO_HELI - 0.01, BITEXCO_HELI + 0.03].map((y) => circle(hx, y, hz, r, 48)));
+  g.add(solid(skin(parapet[0], [parapet[0][1], parapet[1][1]], [parapet[1][1], parapet[1][0]]), BITEXCO_FRAME));
+  g.add(solid(skin([circle(hx, BITEXCO_HELI + 0.031, hz, HELI_R + 0.016, 48), circle(hx, BITEXCO_HELI + 0.031, hz, HELI_R + 0.004, 48)]), lampMaterial));
+  const mz = hz + 0.43 * HELI_R;
+  g.add(solid(skin([circle(hx, BITEXCO_HELI + 0.003, mz, 0.5 * HELI_R, 40), circle(hx, BITEXCO_HELI + 0.003, mz, 0.43 * HELI_R, 40)]), MARK_YELLOW));
+  for (const x of [-0.11, 0.11]) g.add(box(0.03, 0.006, 0.3 * HELI_R, CURB, { x: hx + x * HELI_R, y: BITEXCO_HELI, z: mz }));
+  g.add(box(0.22 * HELI_R, 0.006, 0.03, CURB, { x: hx, y: BITEXCO_HELI, z: mz }));
+  // Silver fin up the bud tip's leading edge, from the deck to the crown.
+  const finTop = bitexcoTop(0);
+  const fin = Array.from({ length: 11 }, (_, k) => new THREE.Vector3(...bitexcoAt(0, BITEXCO_HELI + ((finTop - BITEXCO_HELI) * k) / 10, 0.012)));
+  g.add(tube(fin, 0.016, BITEXCO_FRAME, { segments: 20 }));
+  // Icon 68, the five-storey retail podium: two tiers of curved white walls banded with ribbon windows under a white roof
+  // edge, roof gardens on both, entered from the forecourt's opening through glass doors under a white canopy.
+  const tiers: [number, number, number, number, [number, number][]][] = [
+    [1.32, 1.45, 0, 0.5, [[0.05, 0.2], [0.28, 0.42]]],
+    [1.0, 1.12, 0.5, 0.82, [[0.08, 0.22]]],
+  ];
+  for (const [a, b, y0, y1, ribbons] of tiers) {
+    const plan = superellipse(a, b, 3);
+    g.add(solid(skin([lift(plan, y0), lift(plan, y1)]), BITEXCO_WALL));
+    const glazed = superellipse(a + 0.012, b + 0.012, 3);
+    for (const [r0, r1] of ribbons) g.add(solid(skin([lift(glazed, y0 + r0), lift(glazed, y0 + r1)]), windowMaterial));
+    g.add(prism(superellipse(a + 0.025, b + 0.025, 3), 0.03, BITEXCO_WALL, { y: y1 }));
   }
-  for (const t of [0.42, 0.71]) {
-    const r = taper(H * t);
-    const belt = cylinder(1, 1, 0.16, BELT, { y: base + H * t, segments: NS, open: true });
-    belt.scale.set(RX * r + 0.015, 1, RZ * r + 0.015);
-    g.add(belt);
-  }
-  // Helipad.
-  const yh = base + H * 0.74;
-  const rh = taper(H * 0.74);
-  const reach = 1 / Math.hypot(hx / (RX * rh), hz / (RZ * rh));
-  const px = hx * (reach + 0.38);
-  const pz = hz * (reach + 0.38);
-  const ry = Math.atan2(hx, hz);
-  g.add(cylinder(0.44, 0.44, 0.05, M.white, { x: px, y: yh, z: pz, segments: 16 }));
-  g.add(cylinder(0.42, 0.08, 0.3, FIN, { x: px, y: yh - 0.3, z: pz, segments: 16 }));
-  g.add(cylinder(0.445, 0.445, 0.02, lampMaterial, { x: px, y: yh + 0.035, z: pz, segments: 16, open: true }));
-  g.add(box(0.14, 0.1, 0.4, FIN, { x: hx * (reach + 0.05), y: yh - 0.08, z: hz * (reach + 0.05), ry }));
-  const mark = group({ x: px, y: yh + 0.05, z: pz, ry });
-  for (const x of [-0.06, 0.06]) mark.add(box(0.025, 0.004, 0.16, BELT, { x }));
-  mark.add(box(0.12, 0.004, 0.025, BELT));
-  g.add(mark);
-  // Roof garden on the top terrace.
-  const garden = cylinder(0.6, 0.6, 0.03, LAWN, { y: base, segments: 20 });
-  garden.scale.z = 0.72;
+  const garden = prism(superellipse(1.24, 1.37, 3), 0.02, LAWN, { y: 0.53, holes: [superellipse(1.01, 1.13, 3)] });
+  garden.castShadow = false;
   g.add(garden);
-  for (const [x, z] of [[0.72, 0.18], [0.5, 0.42], [-0.25, 0.5], [0.62, -0.32]] as const) g.add(sphere(0.08, HEDGE, { x, y: base, z, segments: 5 }));
+  g.add(area(superellipse(0.95, 1.07, 3), LAWN, { y: 0.85, h: 0.015 }));
+  const ea = -0.72; // the entrance's bearing, between the people at the forecourt's opening
+  for (const [x, z] of superellipse(1.13, 1.26, 3, 14)) if (Math.abs(Math.atan2(x, z) - ea) > 0.5) g.add(sphere(0.07, HEDGE, { x, y: 0.54, z, segments: 5 }));
+  const er = (Math.abs(Math.sin(ea) / 1.32) ** 3 + Math.abs(Math.cos(ea) / 1.45) ** 3) ** (-1 / 3); // wall radius there
+  g.add(box(0.36, 0.42, 0.03, windowMaterial, { x: Math.sin(ea) * er, z: Math.cos(ea) * er, ry: ea }));
+  g.add(box(0.5, 0.025, 0.22, BITEXCO_WALL, { x: Math.sin(ea) * (er + 0.11), y: 0.44, z: Math.cos(ea) * (er + 0.11), ry: ea }));
   return g;
 }
 
@@ -542,7 +677,7 @@ function palace(p: Place): THREE.Group {
   // Roof: pavilion and flag, and the helicopter.
   g.add(box(0.62, 0.26, 1.5, PALACE_WHITE, { y: 1.08 }));
   g.add(box(0.78, 0.04, 1.66, PALACE_WHITE, { y: 1.34 }));
-  g.add(flag({ y: 1.38, h: 0.95, s: 1.0 }));
+  g.add(vietnamFlag({ y: 1.38, h: 0.95, s: 1.0 }));
   const heli = group({ x: 0.15, y: 1.08, z: -1.7, ry: 0.6 });
   heli.add(box(0.1, 0.08, 0.22, HELI, { y: 0.03 }));
   heli.add(beam([0, 0.08, -0.1], [0, 0.1, -0.36], 0.025, HELI));
@@ -627,7 +762,7 @@ function benThanh(p: Place): THREE.Group {
   for (const [x, z, ry] of [[0, 0.22, 0], [0.28, 0, Math.PI / 2], [-0.28, 0, -Math.PI / 2]] as const) t.add(clock(0.13, { x, y: 1.68, z, ry }));
   t.add(box(0.62, 0.06, 0.5, CREAM, { y: 2.04 }));
   t.add(hipRoof(0.7, 0.6, 0.34, TILE_RED, { y: 2.1 }));
-  t.add(flag({ y: 2.36, h: 0.7, s: 0.55 }));
+  t.add(vietnamFlag({ y: 2.36, h: 0.7, s: 0.55 }));
   g.add(t);
   return g;
 }
@@ -871,7 +1006,7 @@ export default function build(): CityScene {
   root.add(area(shoreBand(-3.25, 2.15, -4.85), LAWN, { h: 0.03 }));
   root.add(area(shoreBand(-9.92, -4.45, -1.5), LAWN, { h: 0.03 }));
   root.add(area(shoreBand(7.2, 9.92, -5.35), LAWN, { h: 0.03 }));
-  root.add(area(roundRect(3.2, -9.9, 9.9, -5.85, 0.55), LAWN, { h: 0.03 }));
+  root.add(area(roundRect(3.2, -9.9, 9.9, -4.15, 0.55), LAWN, { h: 0.03 }));
   root.add(area(roundRect(-4.55, 3.05, -1.95, 7.55, 0.2), LAWN, { h: 0.03 }));
 
   // Streets, the park ring and the signalised crossroads at Ben Thanh's corner.
@@ -893,7 +1028,7 @@ export default function build(): CityScene {
   root.add(area(ellipse(PARK[0], PARK[1], 1.68, 2.58), CURB, { h: 0.065 }));
   root.add(area(ellipse(PARK[0], PARK[1], 1.6, 2.5), LAWN, { h: 0.075 }));
   root.add(fountain({ x: PARK[0], y: 0.075, z: PARK[1] }));
-  root.add(flag({ x: -0.75, y: 0.075, z: -2.0, h: 1.5, s: 0.9 }));
+  root.add(vietnamFlag({ x: -0.75, y: 0.075, z: -2.0, h: 1.5, s: 0.9 }));
 
   // Independence Palace facing the park across its lawn and curved drive.
   root.add(patch(0.65, 4.9, CURB, { x: -2.68, z: -0.5, h: 0.05 }));
@@ -914,7 +1049,17 @@ export default function build(): CityScene {
   root.add(landmark81({ x: -3.2, z: 5.22 }));
   root.add(operaHouse({ x: -5.6, z: -8.15 }));
   root.add(cathedral({ x: 0.25, z: -4.85 }));
-  root.add(bitexco({ x: 5.45, z: -7.6 }));
+  // Bitexco on its own round forecourt, which opens onto the street past the cathedral (-x); clipped shrubs ring the rest.
+  const [bitX, bitZ] = BITEXCO_AT;
+  root.add(bitexco({ x: bitX, z: bitZ }));
+  root.add(area(ellipse(bitX, bitZ, BITEXCO_PLAZA_R + 0.07, BITEXCO_PLAZA_R + 0.07, 40), CURB, { h: 0.045 }));
+  root.add(area(ellipse(bitX, bitZ, BITEXCO_PLAZA_R, BITEXCO_PLAZA_R, 40), PLAZA, { h: 0.055 }));
+  for (let i = 0; i < 12; i++) {
+    const a = ((i + 0.5) / 12) * Math.PI * 2;
+    if (Math.cos(a) < -0.7) continue;
+    root.add(sphere(0.08, HEDGE, { x: bitX + Math.cos(a) * (BITEXCO_PLAZA_R - 0.14), y: 0.055, z: bitZ + Math.sin(a) * (BITEXCO_PLAZA_R - 0.14), segments: 5 }));
+  }
+  for (const [dx, dz] of [[-1.75, -0.25], [-1.7, 0.5], [-1.25, 1.15]] as const) root.add(person({ x: bitX + dx, y: 0.055, z: bitZ + dz }));
   root.add(postOffice({ x: 5.9, z: -0.68 }));
   root.add(benThanh({ x: 5.9, z: 4.05 }));
   root.add(monument({ x: 0.4, y: 0.045, z: 3.95 }));
@@ -932,23 +1077,25 @@ export default function build(): CityScene {
   // Signalised crossroads at the market's corner: a light on each corner.
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) root.add(signal({ x: V1_X + sx * 0.65, z: AVE_Z + sz * (AVE_W / 2 + 0.1) }));
 
-  // Apartment blocks at the back right.
+  // Two apartment blocks along the right edge, clear of Bitexco's forecourt.
   const aptWall = mat(0xdcc6b8);
   const aptTrim = mat(0xf0e6dc);
-  for (const [x, z, w, d, h] of [[6.95, -9.05, 1.3, 1.2, 3.4], [8.85, -8.8, 1.2, 1.3, 3.0], [8.75, -6.55, 1.3, 1.2, 3.2]] as const) {
+  for (const [x, z, w, d, h] of [[8.85, -8.8, 1.2, 1.3, 3.0], [8.95, -6.75, 1.3, 1.2, 3.2]] as const) {
     root.add(building({ x, z, w, d, h, wall: aptWall, trim: aptTrim, windows: 'grid', roof: 'flat', floorH: 0.4 }));
   }
 
-  // Shophouses: a front row of shops along the street, a taller row behind it.
+  // Shophouses: one row of shops along the street.
   for (let x = 3.3, i = 0; x < 9.6; i++) {
     const w = Math.min(0.6 + rand() * 0.28, 9.8 - x);
     root.add(shophouse(x + w / 2, -3.45, w - 0.03, 1.2, 1.15 + rand() * 0.45, SHOP_WALLS[i % SHOP_WALLS.length], AWNINGS[i % AWNINGS.length], rand() < 0.35));
     x += w;
   }
-  for (let x = 3.6, i = 3; x < 7.8; i++) {
-    const w = Math.min(0.65 + rand() * 0.3, 7.9 - x);
-    root.add(shophouse(x + w / 2, -4.95, w - 0.03, 1.5, 1.85 + rand() * 0.55, SHOP_WALLS[i % SHOP_WALLS.length], undefined, rand() < 0.5));
-    x += w;
+  // A taller row once stood behind it and boxed Bitexco in. Its numbers are still drawn, so the trees, crowds and traffic
+  // that draw from `rand` after it keep their layout.
+  for (let x = 3.6; x < 7.8;) {
+    x += Math.min(0.65 + rand() * 0.3, 7.9 - x);
+    rand(); // height
+    rand(); // roof
   }
 
   // Night-market stalls in two facing rows, a string of lanterns over the aisle between them.
@@ -986,10 +1133,8 @@ export default function build(): CityScene {
     [-7.1, -4.5, -2.3, -3.2], // under the bridge ramp
     [-1.2, 3.0, 2.05, 7.65], // palm plaza and stalls
     [3.1, -5.85, 9.95, 9.95], // shophouses, post office, Ben Thanh and its square, the avenue's east end
-    [4.3, -8.5, 6.6, -6.7], // Bitexco podium
-    [6.2, -9.75, 7.7, -8.35], // apartments
-    [8.1, -9.55, 9.6, -8.05],
-    [8.0, -7.25, 9.5, -5.85],
+    [8.1, -9.55, 9.6, -8.05], // apartments
+    [8.2, -7.45, 9.7, -6.05],
     [-5.6, 9.1, 3.2, 9.95], // avenue sidewalk palms
     [1.55, -9.95, 3.65, -4.4], // V1 sidewalks
   ];
@@ -998,7 +1143,8 @@ export default function build(): CityScene {
       const x = Math.max(-9.4, Math.min(9.4, gx + (rand() - 0.5) * 0.45));
       const z = Math.max(-9.4, Math.min(9.4, gz + (rand() - 0.5) * 0.45));
       const s = 0.85 + rand() * 0.35;
-      if (x < shoreAt(z) + 0.4 || onRoad(x, z, 0.3) || blocked.some(([ax, az, bx, bz]) => x > ax && x < bx && z > az && z < bz)) continue;
+      if (x < shoreAt(z) + 0.4 || onRoad(x, z, 0.3) || Math.hypot(x - bitX, z - bitZ) < BITEXCO_PLAZA_R + 0.35) continue;
+      if (blocked.some(([ax, az, bx, bz]) => x > ax && x < bx && z > az && z < bz)) continue;
       root.add(tree({ x, z, s }));
     }
   }

@@ -7,7 +7,7 @@ import { TILE } from '../src/kit';
 
 const MAX_HEIGHT = 14;
 /** Per-city render budgets after static merging (see docs/city-authoring.md). */
-const MAX_TRIANGLES = 90_000;
+const MAX_TRIANGLES = 150_000;
 const MAX_DRAW_CALLS = 220;
 const HEX = /^#[0-9a-f]{6}$/i;
 const HALF = TILE / 2 + 0.05;

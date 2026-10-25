@@ -66,16 +66,6 @@ function spanAt(cx: number, y0: number, w: number, rise: number, seg = 12): [num
   return pts;
 }
 
-function pine(x: number, z: number, s = 1): THREE.Group {
-  const g = group({ x, z });
-  g.add(cylinder(0.03 * s, 0.05 * s, 0.85 * s, M.trunk, { segments: 5 }));
-  // Flat, layered, wide umbrella canopy.
-  g.add(cylinder(0.34 * s, 0.24 * s, 0.1 * s, M.leafDark, { y: 0.7 * s, segments: 9 }));
-  g.add(cylinder(0.3 * s, 0.34 * s, 0.1 * s, M.leaf, { y: 0.8 * s, segments: 9 }));
-  g.add(dome(0.22 * s, M.leaf, { y: 0.9 * s, squash: 0.5, segments: 8 }));
-  return g;
-}
-
 // ---------------------------------------------------------------------------
 // Colosseum
 // ---------------------------------------------------------------------------
@@ -610,7 +600,7 @@ export default function build(): CityScene {
 
   // Pines and trees.
   for (const [x, z, s] of [[-2.0, 5.2, 1.1], [-1.0, 5.0, 1.0], [-7.2, 7.4, 1.1], [-6.5, 8.6, 0.9], [-9.2, 0.9, 1.0], [-3.9, 1.6, 1.0], [2.5, 3.2, 0.9], [-1.4, 8.8, 0.9], [6.1, 7.4, 1.2]] as const) {
-    root.add(pine(x, z, s));
+    root.add(tree({ x, z, s, kind: 'umbrella' }));
   }
   root.add(row(-3.4, 0.8, -3.4, 5.8, 4, (x, z) => tree({ x, z, s: 0.8 })));
 

@@ -2,18 +2,18 @@
 
 Organic forms the kit primitives cannot express (statues, animals, boats,
 terrain) are reconstructed with Hyper3D Rodin **Image-to-3D** from one
-reference image per asset made in the Gemini chat, then baked into source as
+reference image per asset made in Gemini or ChatGPT, then baked into source as
 quantised, untextured meshes. Nothing is downloaded at runtime: each colour
 area of a model becomes one palette material.
 
 The whole batch moves together. Every asset is listed in
 `scripts/rodin/assets.ts`, and `bun run rodin status` always says what each one
-needs next. No API keys: Gemini and Rodin are used through their web UIs.
+needs next. No API keys: the image tools and Rodin are used through their web UIs.
 
 ```mermaid
 flowchart LR
   M[assets.ts] --> B[rodin brief]
-  B --> G["Gemini chat<br/>one per asset, in parallel"]
+  B --> G["Gemini or ChatGPT<br/>one chat per asset, in parallel"]
   G --> I[".rodin/refs/&lt;name&gt;.png<br/>three-quarter view"]
   I --> R["Rodin Image-to-3D<br/>one tab per asset, in parallel"]
   R --> K["rodin bake<br/>one process per asset"]
@@ -23,7 +23,7 @@ flowchart LR
 
 | State | Meaning | Next |
 |---|---|---|
-| `need refs` | No `.rodin/refs/<name>.<png\|jpg\|jpeg\|webp>` | Gemini, prompt in `.rodin/BRIEF.md` |
+| `need refs` | No `.rodin/refs/<name>.<png\|jpg\|jpeg\|webp>` | Gemini or ChatGPT, prompt in `.rodin/BRIEF.md` |
 | `need glb` | Image saved, no `.rodin/<name>.glb` | Rodin, upload list in `.rodin/BRIEF.md` |
 | `ready` | GLB present, never baked | `bun run rodin bake` |
 | `stale` | GLB, `tris`, `colours` count or `clean` changed since the last bake | `bun run rodin bake` |
@@ -41,7 +41,7 @@ each time, so rerun it whenever images arrive. The file is replaced, not
 appended to: naming assets leaves only those in it, so run plain `brief` to
 see the whole open batch.
 
-- **Gemini section**, per asset without an image: one prompt for a
+- **Image section**, per asset without an image: one prompt for a
   **three-quarter** view (the angle that shows the most of any object; Rodin
   needs nothing else). Assets with a `poster` crop get
   `.rodin/refs/<name>.poster.png` to attach to the prompt.
@@ -54,17 +54,36 @@ plus shared rules for Image-to-3D input: square image, whole object centred
 with margin, plain white background (asking Gemini for transparency makes it paint a fake checkerboard), no ground or shadow, even light, matte
 flat colours, a clean miniature-model style.
 
-## 2. Reference images in Gemini (you)
+## 2. Reference images in Gemini or ChatGPT (you)
 
-One chat per asset; run several at once. Save each result as
-`.rodin/refs/<name>.<png|jpg|webp>`. Regenerate rather than saving when the
-image fails the checklist at the top of the brief: cropped, ground or shadow,
-extra colours, outlines or a photo look. Gemini cannot draw real transparency;
-a plain white background is fine (Rodin removes it), a painted checkerboard is
-not. Paint out Gemini's sparkle watermark in the bottom-right corner with the
+One chat per asset; run several at once. Gemini in Google AI Studio adds no
+visible watermark; the Gemini app adds a sparkle in the bottom-right corner, and
+ChatGPT works too. Give both tools the same prompt, white background included.
+Save each result as `.rodin/refs/<name>.<png|jpg|webp>`. Regenerate rather than
+saving when the image fails the checklist at the top of the brief: cropped,
+ground or shadow, extra colours, outlines or a photo look. A plain white
+background is fine (Rodin removes it), a painted checkerboard is not (asking
+Gemini for transparency produces one). Paint out any visible watermark with the
 background colour before uploading, or Rodin models it as a stray blob.
 
-## 3. Image-to-3D in Rodin (you)
+Ask for a few large smooth forms. The first Batu cliff asked for "a rounded top"
+and "dense jungle": the image showed a dome under hundreds of small clumps, and
+the bake turned them into leaf shards and black specks. Corcovado's "a few large
+smooth rounded canopy masses, not many small bumps" baked clean. Put this wording
+in the asset's `look`, together with a count ("two or three masses") and the
+thinnest part as a fraction of the height.
+
+## 3. Image-to-3D in Rodin (agent or you)
+
+The agent runs this step itself through the managed browser (`browser.open({ name: "hyper3d", headed: true,
+persist: true })`), whose profile stays logged in to Hyper3D. Per asset: open `https://hyper3d.ai/workspace/rodin`,
+upload `.rodin/refs/<name>.png` into `.rodin-homepage-upload-wrapper input[type=file]`, press **GENERATE**, wait
+for the URL to become `/workspace/rodin/<task-uuid>`, then press the two confirms below and download. Find buttons by
+their visible leaf text and click the centre of the one that `elementFromPoint` hits: hidden copies of **Confirm**
+sit in closed dialogs, and the visible button's text is covered by a transparent span. Downloads are captured with
+CDP `Browser.setDownloadBehavior` into `.rodin/downloads/<name>/`; unzip each zip into a fresh folder named after its
+task UUID (an older `base_basic_pbr.glb` may already sit in the asset's folder) and copy `base_basic_pbr.glb`. Check the
+credit balance in the header before and after (0.5 per asset). By hand the steps are the same:
 
 One tab per asset, all at once: **Image to 3D**, upload the image, no prompt,
 **Gen-2.5** with effort **High** (0.5 credits each on the Creator plan) and
@@ -80,6 +99,12 @@ download is a zip holding `base_basic_pbr.glb` (textured) and
 `base_basic_shaded.glb`. Extract the **pbr** one as `.rodin/<name>.glb`.
 `status` lists GLBs whose names are not in the manifest, so a download saved
 under Rodin's own name shows up.
+
+When a re-generation changes an asset's `colours` count, the old city code
+still passes the old number of materials, and `shape()` throws on a mismatch.
+Until the city's material array changes, keep the new GLB at
+`.rodin/pending/<name>.glb`, where `status` and bare bakes cannot see it. Move
+it into place, bake by name, and change the material array in one step.
 
 ## 4. Bake
 
@@ -100,6 +125,23 @@ regions share vertices, so there are no cracks. It writes
 colour, darkest first, and stamps the GLB hash and options; that stamp is how
 `status` detects stale files. Commit the `.shape.ts`, never the GLB or images,
 and regenerate rather than editing it.
+
+Optional, for heavy downloads (Rodin GLBs run 25-40 MB, ~250k triangles): pre-reduce
+in Blender before baking, then copy the result to `.rodin/<name>.glb`:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P scripts/rodin/decimate.py -- \
+  .rodin/downloads/<name>/base_basic_pbr.glb .rodin/downloads/<name>/<name>-20k.glb
+```
+
+It voxel-remeshes, decimates to 20k triangles and re-bakes the PBR textures onto a
+new UV layout (arguments and tuning in the script header). Plain decimation turns
+modelled detail such as window mullions into sawteeth, so do not substitute it.
+`bitexco` was baked from this 20k GLB (3.2 MB instead of 26 MB). Its baked shape
+deviated from the 250k original by 0.15% of the tower's height on average, against
+0.14% for a shape baked straight from the raw download. Even so its smooth glass
+shaft came out lumpy and faceted at 3,000 triangles, and on 2026-10-23 Bitexco was
+rebuilt procedurally: towers stay procedural (see Adding an asset).
 
 ## 5. Place, in parallel (one agent per city)
 

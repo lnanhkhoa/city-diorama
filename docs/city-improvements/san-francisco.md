@@ -4,7 +4,7 @@ Source: `src/cities/list/san-francisco.ts`. Part of the [city improvements](READ
 
 ## Status
 
-- **Budget now:** 30,126 tris, 165 draws (limits 90,000 / 220).
+- **Budget now:** 36,710 tris, 181 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Roads clear of towers; Alamo road; Transamerica wings; boats around Alcatraz; cable-car crest plaza.
 - **Fixed 2026-10-21 (second pass):** Traffic now runs as welded platoons (`convoy()`: 2-3 cars per animated object, shared paint), 198 → 165 draws. Golden Gate lit at night: lamp posts along both deck rails, a beacon on each tower leg, towers floodlit (`ORANGE_LIT` floodMat). Alcatraz ×1.4 (rock squashed in z), moved to x -2.8, z 6.0 clear of the left bridge tower, cellhouse floodlit; boats rerouted (red boat loops x -0.2 → z 8.4, the lane z 7.7 removed). New `ferryBuilding()` (arcaded hall, lit clock tower, copper cap) at x 3.5, z 4.8 and two `pier()`s (x 0.8, x 6.2) with sheds and lamps. Transamerica H 9.4 → 7.8, slimmer base, thinner window slits; Salesforce stretched to 12.3 so it is now the taller one. Telegraph Hill rebuilt as three terraces with grass ledges, a stone stair, ring road, ledge trees; Coit Tower ×1.3 and floodlit.
 - **Left open:** Painted Ladies still share one massing; no second row of houses, Sutro Tower, Palace of Fine Arts or fog strips; the two orange-lit towers use flat floodMat (no spotlight cone). Platoons must stay ≤ 0.8 long (0.9 on the bridge) behind the lead car so the tail stays on the plinth at the lane wrap.

@@ -1,16 +1,15 @@
 import * as THREE from 'three';
 import {
   Animator, M, area, beam, box, building, car, cone, createBase, crosswalk, cylinder, floodMat, group, lamp, lampMaterial, lathe, mat,
-  patch, person, prism, profile, rng, road, row, scatter, shape, sphere, tree, boat, waterMat, windowMaterial, type Place,
+  patch, person, prism, rng, road, row, scatter, shape, sphere, tree, boat, waterMat, windowMaterial, type Place,
 } from '../../kit';
 import type { CityScene } from '../types';
 import CHRIST from '../shapes/christ-redeemer.shape';
+import CORCOVADO from '../shapes/corcovado.shape';
 import SUGARLOAF from '../shapes/sugarloaf.shape';
 
 const GRANITE = mat(0xa6a39a, { roughness: 0.9, flat: true });
-const GRANITE_DARK = mat(0x8c8a82, { roughness: 0.9, flat: true });
 const FOREST = mat(0x4f9444, { flat: true });
-const FOREST_DARK = mat(0x37753a, { flat: true });
 const SAND = mat(0xf0dcaa);
 // Floodlit at night, as the real statue is.
 const STATUE = floodMat(0xf6f5ef, 0xe4ecff, 0.6, { roughness: 0.6 });
@@ -55,29 +54,20 @@ function christ(p: Place): THREE.Group {
   return shape(CHRIST, [STATUE], { ...p, height: 2.3, smooth: true });
 }
 
-/** Corcovado: forest skirt under a steep, faceted granite spire with sheer front buttresses. */
-function corcovado(p: Place, rand: () => number): THREE.Group {
+// Corcovado: baked Rodin massif (scripts/rodin/assets.ts), parts rainforest + granite, its sheer cliff on local +z. Turned
+// a quarter right so the cliff faces the camera. The summit plateau (measured off the bake: centre (0.012, 0.987, 0.026)
+// of the normalised shape, about 0.75 across at this height) carries a viewing terrace and Christ.
+const CORCOVADO_H = 6.4;
+function corcovado(p: Place): THREE.Group {
   const g = group(p);
-  const skirtR = (y: number) => 3.2 - 0.38 * y;
-  g.add(lathe([[3.2, 0], [2.85, 1.2], [2.4, 2.4], [1.95, 3.7]], FOREST, { segments: 12 }));
-  g.add(lathe([[1.95, 3.6], [1.6, 5.0], [1.35, 6.5], [1.1, 7.8], [0.95, 8.6]], GRANITE, { segments: 9 }));
-  g.add(cylinder(0.95, 0.95, 0.04, GRANITE_DARK, { y: 8.6, segments: 9 }));
-  // Sheer granite cliff on the camera-facing flank (forest skirt wraps the other sides).
-  g.add(profile([[-1.2, 3.5], [1.2, 3.5], [0.75, 8.5], [-0.75, 8.5]], 0.5, mat(0xb9b5ab, { roughness: 0.9, flat: true }), { x: 0.82, z: 0.82, ry: Math.PI / 4 }));
-  for (let i = 0; i < 4; i++) {
-    const a = Math.PI * 0.25 + (i - 1.5) * 0.3;
-    const y = 4.2 + (i % 2) * 1.5;
-    g.add(box(0.2, 2.8 - (i % 2) * 0.8, 0.5, GRANITE_DARK, { x: Math.cos(a) * 1.55, z: Math.sin(a) * 1.55, y, ry: -a + Math.PI / 2 }));
-  }
-  // Rainforest canopy on the skirt.
-  for (let i = 0; i < 28; i++) {
-    const a = rand() * Math.PI * 2;
-    const y = 0.1 + rand() * 3.6;
-    g.add(sphere(0.4 + rand() * 0.2, rand() > 0.5 ? FOREST_DARK : M.leaf, {
-      x: Math.cos(a) * skirtR(y) * 0.85, z: Math.sin(a) * skirtR(y) * 0.85, y, segments: 7,
-    }));
-  }
-  g.add(christ({ y: 8.64 }));
+  const ry = Math.PI / 4;
+  g.add(shape(CORCOVADO, [FOREST, GRANITE], { height: CORCOVADO_H, ry }));
+  const [sx, sy, sz] = [0.012, 0.987, 0.026].map((v) => v * CORCOVADO_H);
+  const x = sx * Math.cos(ry) + sz * Math.sin(ry);
+  const z = -sx * Math.sin(ry) + sz * Math.cos(ry);
+  g.add(cylinder(0.5, 0.42, 0.12, PROM_W, { x, y: sy - 0.04, z, segments: 12 }));
+  g.add(cylinder(0.3, 0.34, 0.08, STATUE, { x, y: sy + 0.08, z, segments: 8 }));
+  g.add(christ({ x, y: sy + 0.16, z }));
   return g;
 }
 
@@ -222,8 +212,6 @@ export default function build(): CityScene {
   // Atlantic sea, sand crescent and the black-and-white promenade.
   root.add(area([[-9.8, 0.1], [-9.8, 9.8], [1.2, 9.8]], SAND));
   root.add(area([[-9.8, 3.0], [-7.4, 4.6], [-5.2, 6.2], [-3.6, 8.0], [-2.8, 9.8], [-9.8, 9.8]], waterMat(0x3f9fcf), { h: 0.07 }));
-  // White surf line along the shore.
-  root.add(area([[-9.8, 3.0], [-7.4, 4.6], [-5.2, 6.2], [-3.6, 8.0], [-2.8, 9.8], [-2.45, 9.8], [-3.3, 8.15], [-4.95, 6.4], [-7.2, 4.85], [-9.8, 3.3]], mat(0xffffff), { h: 0.085 }));
   root.add(stripes(along(0, 0), along(1, 0), 0.75, 0.32));
   const avA = along(0, 1.15);
   const avB = along(1, 1.15);
@@ -233,7 +221,7 @@ export default function build(): CityScene {
   root.add(area([[2.4, -9.8], [9.8, -9.8], [9.8, -1.0], [8, -1.6], [6.2, -2.2], [4.6, -3.4], [3.4, -4.4], [2.8, -6.4], [2.4, -8]], waterMat(0x3f9fcf), { h: 0.07 }));
 
   // Mountains.
-  root.add(corcovado({ x: -6.3, z: -6.3 }, rand));
+  root.add(corcovado({ x: -6.4, z: -6.4 }));
   root.add(sugarloaf({ x: 7.3, z: -6.3, y: 0.04 }));
 
   // Cable car: base station, Urca shoulder, Sugarloaf summit. Heights were sampled from the baked
@@ -316,7 +304,7 @@ export default function build(): CityScene {
     root.add(umbrella(x, z, UMBRELLAS[i % UMBRELLAS.length]));
     umbs.push([x, z]);
   }
-  // Dry sand only: seaward of the promenade edge and 0.45 clear of the surf line.
+  // Dry sand only: seaward of the promenade edge and 0.45 clear of the waterline.
   const onSand = (x: number, z: number) => {
     const off = (x - P0[0]) * nx + (z - P0[1]) * nz;
     if (off > -0.5 || x < -9.5 || z > 9.5) return false;

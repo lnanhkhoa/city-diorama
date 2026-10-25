@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {
   Animator, M, archHole, area, beam, box, building, bus, car, cone, createBase, crosswalk, cylinder, dome, group, hipRoof, gableRoof, lamp, lampMaterial,
-  floodMat, mat, mergeStatic, patch, person, prism, profile, rng, road, row, scatter, screen, shape, sphere, tree, waterMat, windowMaterial, type Place,
+  floodMat, mat, mergeStatic, patch, person, prism, profile, rng, road, row, scatter, screen, shape, sphere, tree, vietnamFlag, waterMat,
+  windowMaterial, type Place,
 } from '../../kit';
 import type { CityScene } from '../types';
 import MOTORBIKE from '../shapes/motorbike.shape';
@@ -22,7 +23,8 @@ const BRICK_FLOOR = mat(0xb4644a, { roughness: 0.9 });
 const BANK_STONE = mat(0xd8c98e);
 const SHUTTER = mat(0x3f7a5a, { roughness: 0.8 });
 const IRON_DARK = mat(0x3b4a3f, { roughness: 0.6, metalness: 0.3 });
-const LAKE = waterMat(0x5fb3a8);
+// Hoan Kiem's water is an opaque jade green from its algae, not clear turquoise.
+const LAKE = waterMat(0x6f9e72);
 const ASPHALT = mat(0x8a8d90, { roughness: 0.95 });
 const PLAZA = mat(0xd9d5c8);
 const LAWN_EDGE = mat(0xf1eee4);
@@ -87,33 +89,6 @@ function vendor(x: number, z: number, ry: number): THREE.Group {
   g.add(cone(0.08, 0.045, NON_LA, { y: 0.195, segments: 8 }));
   g.add(box(0.3, 0.012, 0.012, M.wood, { y: 0.14 }));
   for (const sx of [-1, 1]) g.add(cylinder(0.04, 0.03, 0.04, mat(0xc99a4a), { x: sx * 0.15, y: 0.08, segments: 6 }));
-  return g;
-}
-
-// Flag of Vietnam: red field, width 2/3 of the length, a five-pointed yellow star centred on the field
-// whose points lie on a circle of radius 1/5 of the length. The star is a flat pentagram, centred in depth
-// like the field and twice as thick, so it stands proud of both faces. Pole of height h; the field hangs
-// from its top.
-const FLAG_RED = mat(0xda251d, { roughness: 0.7 });
-const FLAG_STAR = mat(0xffcd00, { roughness: 0.6 });
-function flag(p: Place & { h?: number; s?: number }): THREE.Group {
-  const g = group(p);
-  const h = p.h ?? 1.3;
-  const s = p.s ?? 1;
-  g.add(cylinder(0.015 * s, 0.022 * s, h, M.steel, { segments: 5 }));
-  g.add(sphere(0.025 * s, M.gold, { y: h, segments: 5 }));
-  const len = 0.5 * s;
-  const wid = (len * 2) / 3;
-  const cy = h - 0.03 * s - wid / 2;
-  g.add(box(len, wid, 0.015, FLAG_RED, { x: len / 2, y: cy - wid / 2 }));
-  const R = len / 5;
-  const star: [number, number][] = [];
-  for (let i = 0; i < 10; i++) {
-    const a = Math.PI / 2 + (i * Math.PI) / 5;
-    const r = i % 2 === 0 ? R : R * 0.382;
-    star.push([Math.cos(a) * r, Math.sin(a) * r]);
-  }
-  g.add(profile(star, 0.03, FLAG_STAR, { x: len / 2, y: cy }));
   return g;
 }
 
@@ -299,7 +274,7 @@ function flagTower(p: Place): THREE.Group {
   y += 0.42;
   g.add(cylinder(0.52, 0.5, 0.07, BRICK_DARK, { y, segments: 8, ry: Math.PI / 8 }));
   g.add(cylinder(0.14, 0.16, 0.14, BRICK, { y: y + 0.07, segments: 8 }));
-  g.add(flag({ y: y + 0.21, h: 1.4, s: 1.5 }));
+  g.add(vietnamFlag({ y: y + 0.21, h: 1.4, s: 1.5 }));
   return g;
 }
 
@@ -375,7 +350,7 @@ function operaHouse(p: Place): THREE.Group {
     g.add(dome(0.27, slate, { x: sx * 1.02, y: 1.66, z: 0.5, squash: 1.35, segments: 8 }));
     g.add(cylinder(0.005, 0.025, 0.28, M.dark, { x: sx * 1.02, y: 2.02, z: 0.5, segments: 4 }));
   }
-  g.add(flag({ y: 1.86, h: 0.75, s: 0.85 }));
+  g.add(vietnamFlag({ y: 1.86, h: 0.75, s: 0.85 }));
   return g;
 }
 
@@ -547,7 +522,7 @@ export default function build(): CityScene {
   // central walk, more lawns flanking the mausoleum.
   const yardZ = 4.5;
   root.add(patch(0.7, 0.7, mat(0xb8453a), { x: mausX, z: yardZ, h: 0.1 }));
-  root.add(flag({ x: mausX, y: 0.1, z: yardZ, h: 2.6, s: 1.3 }));
+  root.add(vietnamFlag({ x: mausX, y: 0.1, z: yardZ, h: 2.6, s: 1.3 }));
   const lawns: [number, number, number, number][] = [];
   for (const off of [1.2, 2.7, 4.2]) {
     for (const sx of [-1, 1]) lawns.push([mausX + sx * off, yardZ, 1.2, 1.0]);

@@ -9,8 +9,9 @@ weather icon, local date, temperature). Visual reference: the `assets/` posters.
 ## Scope
 - 13 cities: Paris, New York, Sydney, Rome, Kuala Lumpur, Tokyo, London,
   Dubai, Cairo, Rio de Janeiro, San Francisco, Hanoi, Ho Chi Minh City.
-- All geometry is built in code (no downloaded models or textures); organic
-  forms may be Rodin meshes baked into source. One module per city.
+- All geometry is built in code (no downloaded models); organic forms may be
+  Rodin meshes baked into source. Textures are allowed (the kit trees draw
+  theirs in code). One module per city.
 - Orbit / zoom with mouse and touch, idle auto-rotate, animated traffic/boats.
 - Live weather from Open-Meteo (no API key). Falls back to a per-city default
   when offline. Weather drives particles (rain, snow), light, and day/night

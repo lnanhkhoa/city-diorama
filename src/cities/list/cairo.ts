@@ -6,6 +6,7 @@ import {
 import type { CityScene } from '../types';
 import CAMEL from '../shapes/camel.shape';
 import FELUCCA from '../shapes/felucca.shape';
+import MOSQUE from '../shapes/muhammad-ali-mosque.shape';
 import SPHINX from '../shapes/sphinx.shape';
 
 const SAND = mat(0xd9bb82);
@@ -17,6 +18,8 @@ const STONE_DARK = mat(0xc08c48, { roughness: 0.95 });
 const CASING = mat(0xf1e6cf, { roughness: 0.8 });
 const ALABASTER = mat(0xe6dcc3, { roughness: 0.7 });
 const LEAD = mat(0x9ba6ad, { roughness: 0.55, metalness: 0.2 });
+// Muhammad Ali Mosque walls: alabaster by day, floodlit warm white at night like the real mosque.
+const MOSQUE_WALL = floodMat(0xe6dcc3, 0xffe2b0, 0.4, { roughness: 0.7 });
 const WALLS = [mat(0xd9bd8c), mat(0xe3cba0), mat(0xcfae7a), mat(0xe8d4ac)];
 const TOWER = mat(0xd6cab4);
 const TOWER_LATTICE = mat(0xb4a68c);
@@ -150,42 +153,12 @@ function muhammadAli(p: Place): THREE.Group {
   g.add(box(0.1, 0.2, 0.02, windowMaterial, { y: 1.2, z: 3.055 }));
   g.add(profile(archHole(0, 0.7, 0.4), 0.03, M.dark, { z: 3.012 }));
   const y = 1.0;
-  // Mosque proper (set back).
-  const mz = -1.0;
-  g.add(box(2.7, 1.3, 2.7, ALABASTER, { y, z: mz }));
-  g.add(box(2.8, 0.1, 2.8, STONE, { y: y + 1.3, z: mz }));
-  // Drum (taller than the half-domes so its window slits clear them), then the central dome.
-  g.add(cylinder(0.95, 1.0, 0.7, ALABASTER, { y: y + 1.4, z: mz, segments: 16 }));
-  for (let i = 0; i < 8; i++) {
-    const a = ((i + 0.5) / 8) * Math.PI * 2;
-    g.add(box(0.12, 0.25, 0.06, windowMaterial, { x: Math.sin(a) * 0.96, z: mz + Math.cos(a) * 0.96, y: y + 1.8, ry: a }));
-  }
-  g.add(dome(1.0, LEAD, { y: y + 2.1, z: mz, segments: 20, squash: 1.0 }));
-  g.add(cylinder(0.02, 0.02, 0.4, M.gold, { y: y + 3.1, z: mz, segments: 4 }));
-  // Four half-domes: quarter-spheres whose flat cut faces the central mass, stepping down from it.
-  const halfGeo = new THREE.SphereGeometry(0.85, 14, 7, 0, Math.PI, 0, Math.PI / 2);
-  halfGeo.scale(1, 0.55, 1);
-  for (const [dx, dz, ry] of [[0.5, 0, Math.PI / 2], [-0.5, 0, -Math.PI / 2], [0, 0.5, 0], [0, -0.5, Math.PI]] as const) {
-    const half = new THREE.Mesh(halfGeo, LEAD);
-    half.position.set(dx, y + 1.4, mz + dz);
-    half.rotation.y = ry;
-    g.add(half);
-  }
-  for (const [dx, dz] of [[1.2, 1.2], [-1.2, 1.2], [1.2, -1.2], [-1.2, -1.2]] as const) {
-    g.add(cylinder(0.3, 0.3, 0.25, ALABASTER, { x: dx, z: mz + dz, y: y + 1.3, segments: 10 }));
-    g.add(dome(0.34, LEAD, { x: dx, z: mz + dz, y: y + 1.55, segments: 10 }));
-  }
-  // Windows along the front face.
-  g.add(box(2.0, 0.3, 0.04, windowMaterial, { y: y + 0.6, z: mz + 1.36 }));
-  // Courtyard with arcade and domed fountain pavilion.
-  g.add(patch(2.7, 2.0, mat(0xe4d6b8), { y: y + 0.1, z: 1.45 }));
-  for (const sx of [-1, 1]) g.add(box(0.2, 0.5, 2.0, ALABASTER, { x: sx * 1.35, y: y + 0.1, z: 1.45 }));
-  g.add(box(2.7, 0.5, 0.2, ALABASTER, { y: y + 0.1, z: 2.45 }));
-  g.add(cylinder(0.3, 0.3, 0.3, ALABASTER, { y: y + 0.1, z: 1.45, segments: 8 }));
-  g.add(dome(0.4, LEAD, { y: y + 0.4, z: 1.45, segments: 10, squash: 0.8 }));
-  // Pencil minarets flanking the courtyard entrance.
-  g.add(minaret(-1.0, 2.45, 4.0));
-  g.add(minaret(1.0, 2.45, 4.0));
+  // Mosque proper with its courtyard: baked Rodin shape (scripts/rodin/assets.ts), courtyard toward +z, the dome cascade
+  // at the back. Parts: domes (lead), walls (alabaster, floodlit at night). Spans z -2.43..1.83, clear of the gate tower.
+  g.add(shape(MOSQUE, [LEAD, MOSQUE_WALL], { y, z: -0.3, height: 2.3 }));
+  // Pencil minarets at the courtyard's front corners.
+  g.add(minaret(-1.5, 1.8, 4.0));
+  g.add(minaret(1.5, 1.8, 4.0));
   // Fortress buildings beside.
   g.add(building({ w: 1.2, d: 2.4, h: 0.5, wall: WALLS[0], windows: 'none', plain: true, x: -2.5, y, z: 1.0 }));
   g.add(building({ w: 1.2, d: 2.2, h: 0.6, wall: WALLS[1], windows: 'none', plain: true, x: 2.5, y, z: 0.9 }));

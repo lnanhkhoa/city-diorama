@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { setCityLights } from '../kit/materials';
+import { setCityLights, setWaterSky } from '../kit/materials';
 import type { Daytime } from '../weather/api';
 import type { WeatherKind } from '../weather/codes';
 import { KEY_DIR, RIM_DIR, lightingFor } from './lighting';
@@ -43,6 +43,7 @@ export function Atmosphere({ kind, daytime, reducedMotion }: Props) {
     gl.toneMappingExposure = l.exposure;
     fx.set(kind);
     setCityLights(l.lights);
+    setWaterSky(l.sky, l.hemi);
   }, [gl, scene, fx, kind, l]);
 
   useFrame((state, delta) => {

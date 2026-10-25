@@ -1,6 +1,6 @@
 /**
  * Every Rodin-generated shape, in one place so the whole batch can move at once.
- * `bun run rodin brief` writes the Gemini prompts (reference images) and the
+ * `bun run rodin brief` writes the image prompts (reference images) and the
  * Rodin upload lists, `bun run rodin bake` bakes every new or changed GLB in
  * parallel, and `bun run rodin status` shows what is left. Changing `tris`,
  * `colours` or `clean` marks the baked file stale.
@@ -254,5 +254,18 @@ export const ASSETS: RodinAsset[] = [
     colours: ['whole statue, spear included: gold (#e1b13a)'],
     exclude: ['plinth', 'pedestal', 'cliff', 'stairs', 'peacock', 'flowers', 'people'],
     tris: 2500,
+  },
+  {
+    name: 'landmark-81',
+    cities: ['ho-chi-minh'],
+    replaces: 'ho-chi-minh.ts landmark81() tower and podium (the reference also has a square base plate, sunk below ground when placed; keep the flags)',
+    subject: 'the Landmark 81 skyscraper in Ho Chi Minh City',
+    look:
+      'A very tall glass skyscraper made of nine square tubes bundled like bamboo stalks: the outer tubes stop at different heights, ' +
+      'so the tower steps up towards the tallest central tube, which carries a slim crown and a needle spire. Pale frames outline ' +
+      'every tube; it stands on a low stepped podium. Front = the podium entrance, facing the viewer.',
+    colours: ['glass tubes and podium glazing: dark steel blue (#3f5468)', 'frames, setback roofs, podium and spire: pale grey-white (#dfe7ee)'],
+    exclude: ['text', 'people', 'other buildings', 'ground', 'shadow'],
+    tris: 5000,
   },
 ];

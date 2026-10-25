@@ -4,7 +4,7 @@ Source: `src/cities/list/dubai.ts`. Part of the [city improvements](README.md) a
 
 ## Status
 
-- **Budget now:** 23,506 tris, 136 draws (limits 90,000 / 220).
+- **Budget now:** 30,826 tris, 136 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Walking camel caravan in view; tower off the road; dunes inside the plinth; shorter Burj needle.
 - **Fixed 2026-10-21 (second pass):** `burjKhalifa()` rebuilt as 18 thinner 0.5-high levels with a per-level twist, a tapering hex core and a lit `windowMaterial` band on every wing level. `burjAlArab()` sail is now a `floodMat` panel (pale by day, blue-violet at night), with lit atrium bands on the mast, base and restaurant bulb. `dubaiFrame()` is gold `floodMat` with lit inner legs and bridge strip; bottom cross-bar removed. `twistTower()` has a lit band per floor. New `emiratesTower()` twins (triangular plan, pyramidal crown, spire) at (1.9,-8.4) and (3.1,-6.9). New `metroLine()`: elevated viaduct on columns along the road median (z 0.9, deck top y 1.34) with a 3-car shuttle train on `anim.follow`. Camel height 0.72 → 1.0. Dark dune moved to z -6.5 so the twist tower no longer overlaps it.
 - **Left open:** Dunes still lack ridge detail; sea and street life are sparse; fountains static; the Palm crescent is still made of overlapping patches; no old-town creek or Dubai Mall.

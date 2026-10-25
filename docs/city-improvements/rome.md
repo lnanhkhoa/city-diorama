@@ -4,7 +4,7 @@ Source: `src/cities/list/rome.ts`. Part of the [city improvements](README.md) au
 
 ## Status
 
-- **Budget now:** 50,276 tris, 99 draws (limits 90,000 / 220).
+- **Budget now:** 60,028 tris, 177 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** River map bugs, new bridge at x=-3.2, continuous kerbs, Trevi colours.
 - **Fixed 2026-10-21, second pass:** Trevi facade: four statue niches in the wings (`trevi()`, x ±1.18/±1.5), attic block with three dark panels and a gold coat of arms under a raised pediment, lit statues. St Peter's piazza: the hidden straight `colonnade()` is gone; `colonnadeArm()` builds two elliptical arms (centre 6.9, -6.4; 2.7 x 2.8) from the facade ends round an oval with paving, obelisk ring and two fountains; statue balustrade on the facade attic (13 statues); piazza patch widened. Night lighting through `floodMat`/`lampMaterial`: Colosseum arch backing, St Peter's stone and dome, lantern, drum windows, arms, Trevi facade, rock and statues. Bridge at x=-3.2 shortened (len 2.4, z -1.1) and the east-west street now runs to x=-2.75 so the deck foot lands on the street instead of its corner.
 - **Left open:** Trevi basin water does not glow; the facade wings have only the stock `building` grid windows (they do light at night); arms are two column rows, not Bernini's four; Colosseum brick and the Curia/forum notes in the Audit are untouched.

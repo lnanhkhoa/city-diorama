@@ -6,7 +6,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * material, cutting draw calls from thousands to a few dozen.
  *
  * Skipped (kept as-is): subtrees with `userData.dynamic`, multi-material
- * meshes, and non-Mesh objects (points, lines, lights).
+ * meshes, meshes whose material's shader reads its own object-space frame
+ * (`userData.objectSpace`, e.g. `floorLinesGlass`: merging would bake the
+ * placement into the vertices), and non-Mesh objects (points, lines, lights).
+ * UVs and vertex colours are kept only where the material reads them (`map`,
+ * `vertexColors`).
  */
 export function mergeStatic(root: THREE.Object3D): void {
   root.updateMatrixWorld(true);
@@ -16,8 +20,7 @@ export function mergeStatic(root: THREE.Object3D): void {
   const visit = (o: THREE.Object3D): void => {
     if (o.userData.dynamic) return;
     // A mesh that parents other objects stays: removing it would take its children along.
-    const mergeable =
-      o instanceof THREE.Mesh && o.children.length === 0 && !Array.isArray(o.material) && !(o.material as THREE.MeshStandardMaterial).map;
+    const mergeable = o instanceof THREE.Mesh && o.children.length === 0 && !Array.isArray(o.material) && !o.material.userData.objectSpace;
     if (mergeable) {
       const list = byMat.get(o.material);
       if (list) list.push(o);
@@ -28,9 +31,11 @@ export function mergeStatic(root: THREE.Object3D): void {
   for (const c of root.children) visit(c);
 
   for (const [material, meshes] of byMat) {
+    const std = material as THREE.MeshStandardMaterial;
+    const keep = new Set(['position', 'normal', ...(std.map ? ['uv'] : []), ...(std.vertexColors ? ['color'] : [])]);
     const geos = meshes.map((o) => {
       const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
-      for (const name of Object.keys(geo.attributes)) if (name !== 'position' && name !== 'normal') geo.deleteAttribute(name);
+      for (const name of Object.keys(geo.attributes)) if (!keep.has(name)) geo.deleteAttribute(name);
       if (!geo.attributes.normal) geo.computeVertexNormals();
       geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
       geo.clearGroups();

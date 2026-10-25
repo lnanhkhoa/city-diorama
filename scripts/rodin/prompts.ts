@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /**
  * Each asset needs one reference image for Rodin Image-to-3D: a three-quarter
- * view, made by hand in the Gemini chat from `imagePrompt` and saved as
+ * view, made by hand in Gemini (AI Studio) or ChatGPT from `imagePrompt` and saved as
  * `.rodin/refs/<name>.<png|jpg|jpeg|webp>`. One image is enough for Rodin; the
  * three-quarter view shows the most of any object.
  */
@@ -12,7 +12,7 @@ import type { RodinAsset } from './assets';
 
 export const REFS_DIR = '.rodin/refs';
 
-// Formats Gemini downloads and Rodin accepts.
+// Formats the image tools download and Rodin accepts.
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
 
 /** The saved reference image, whatever its extension. */
@@ -46,7 +46,7 @@ const RULES = [
   'Colours: matte and flat, using only the colour areas listed; each area one even colour with no gradients, patterns or dirt.',
 ];
 
-/** Gemini prompt for the reference image. Attach the poster crop first when the asset has one. */
+/** Prompt for the reference image (Gemini or ChatGPT). Attach the poster crop first when the asset has one. */
 export function imagePrompt(a: RodinAsset): string {
   const exclude = ['text, labels or watermark', 'people or animals not described', 'other buildings or objects', ...(a.exclude ?? [])];
   return [

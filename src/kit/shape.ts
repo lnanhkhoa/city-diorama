@@ -19,6 +19,9 @@ export interface ShapePart {
   indices: string;
 }
 
+/** Where and how big a baked shape goes: `height` in world units, `xzScale` multiplies the footprint only. */
+export type ShapePlace = Place & { height?: number; xzScale?: number };
+
 const Q = 65535;
 
 function toBase64(u16: Uint16Array): string {
@@ -75,12 +78,14 @@ function decodePart(part: ShapePart, size: readonly [number, number, number]): T
 /**
  * Place a baked shape, bottom-anchored like every kit solid. `materials` has one
  * entry per part (in the order the generated file lists them), or a single
- * material for all parts. `height` scales uniformly; faceted unless `smooth`.
+ * material for all parts. `height` scales uniformly; `xzScale` then narrows (< 1)
+ * or widens the footprint alone, for a model whose proportions run stockier than
+ * the real building. Faceted unless `smooth`.
  */
 export function shape(
   data: ShapeData,
   materials: THREE.Material | readonly THREE.Material[],
-  p: Place & { height?: number; smooth?: boolean } = {},
+  p: ShapePlace & { smooth?: boolean } = {},
 ): THREE.Group {
   const mats = Array.isArray(materials) ? materials : data.parts.map(() => materials as THREE.Material);
   if (mats.length !== data.parts.length) throw new Error(`shape has ${data.parts.length} parts but got ${mats.length} materials`);
@@ -88,10 +93,11 @@ export function shape(
   g.position.set(p.x ?? 0, p.y ?? 0, p.z ?? 0);
   g.rotation.y = p.ry ?? 0;
   const s = p.height ?? 1;
+  const w = s * (p.xzScale ?? 1);
   data.parts.forEach((part, i) => {
     const base = decodePart(part, data.size);
     const geo = p.smooth ? base.clone() : base.toNonIndexed();
-    geo.scale(s, s, s);
+    geo.scale(w, s, w);
     geo.computeVertexNormals();
     const m = new THREE.Mesh(geo, mats[i]);
     m.castShadow = true;

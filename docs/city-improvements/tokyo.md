@@ -4,7 +4,7 @@ Source: `src/cities/list/tokyo.ts`. Part of the [city improvements](README.md) a
 
 ## Status
 
-- **Budget now:** 38,160 tris, 167 draws (limits 90,000 / 220). Before the second pass: 40,268 / 146.
+- **Budget now:** 53,688 tris, 209 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework. Before the second pass: 40,268 / 146.
 - **Fixed 2026-10-21:** Station z-fight, Kaminarimon bar, boats stop short of the bridge, kerbs, blossom row, plinth and height limits.
 - **Fixed 2026-10-21, second pass:**
   - `fuji()` rebuilt: concave `lathe` profile 4.5 tall (R 2.3, flat-shaded) with a truncated crater, a forest skirt and a snow cap whose lower rim is jagged (per-vertex teeth on the first profile ring). Moved to (-7.4, -7.4); the block at (-5.6, -5.7) that hid it is removed. No Rodin needed.

@@ -4,11 +4,12 @@ Source: `src/cities/list/cairo.ts`. Part of the [city improvements](README.md) a
 
 ## Status
 
-- **Budget now:** 38,316 tris, 107 draws (limits 90,000 / 220).
+- **Budget now:** 56,042 tris, 158 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Open hyperboloid Cairo Tower with lit cabin; mosque half-domes and lit drum; overlaps; dunes.
 - **Fixed 2026-10-21, second pass:** Ground: darker warm `SAND` floor, raised (0.12) `ROCK` Giza plateau polygon (one `area` replaces the two overlapping `DESERT` patches) carrying dunes, pyramids, Sphinx, plateau camel and visitors; lighter `PAVE` plazas (bridgehead, Islamic Cairo, Old Cairo) and dusty `STREET` lanes (z=0.3, x=3.45) in Old Cairo. Sphinx now sits in a sand-coloured elliptical pit (no orange slab) and its stone is `floodMat`-floodlit at night. Qasr el-Nil bridge at x=-1.2 (hump deck `profile` with 3 arches, parapets, 4 lion pedestals, 4 lamps); felucca lanes split into four one-boat lanes from the bridge to the plinth edges (route-around), corniche palm at x=-1.88 dropped. Streetlamps along the corniche (z=4.76, 9) and around the Sphinx pit (4). `cairoHouse()`: mashrabiya bays with `windowMaterial` slits, arched doors/windows on Old Cairo blocks, rooftop tanks. Lotus crown enlarged (petals r 0.8, 1.55 tall, bigger lit core). Citadel: rim battlements, gate tower with lit slit and arched portal; minaret finials with `lampMaterial` tips. Mid-block crosswalks removed; two Old Cairo houses nudged off the plateau edge. `muhammadAli()` body/domes/courtyard untouched (Rodin replacement pending).
 - **Left open:** boats pop in under the bridge deck (sails show above it); camel caravan, buses and moving pedestrians; ablaq cornice stripes and satellite dishes; pyramid band variety; tower-island quay/ferry; Cairo Tower and pyramids have no night lighting beyond the lotus core. Scatter positions shifted again (people now placed on the plateau).
-- **Next:** Add a camel caravan on `anim.follow` (draw budget has room); vary felucca tints; mosque Rodin replacement when it lands.
+- **Fixed 2026-10-22:** the procedural mosque body, domes and courtyard in `muhammadAli()` are replaced by the Rodin shape `muhammad-ali-mosque` (2,996 tris, parts lead domes + alabaster walls, `height` 2.3, courtyard toward +z, spanning z -2.43..1.83 inside the citadel, clear of the gate tower). The walls use `MOSQUE_WALL`, a `floodMat` that floodlights them at night; the two minarets moved to the courtyard's front corners (x ±1.5, z 1.8). Citadel plateau, towers, battlements, gate tower and fortress buildings are unchanged. The baked mosque has no lit drum windows.
+- **Next:** Add a camel caravan on `anim.follow` (draw budget has room); vary felucca tints; lit crescent finials on the mosque domes.
 
 ## Audit
 

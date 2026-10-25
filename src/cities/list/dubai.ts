@@ -259,10 +259,13 @@ function abra(x: number, z: number): THREE.Group {
   return g;
 }
 
-/** Palm Jumeirah: trunk with 16 fronds of villas, a crown disc and the crescent breakwater. */
+/**
+ * Palm Jumeirah: trunk with 16 fronds of villas, a crown disc and the crescent breakwater. The sand sits just above
+ * the sea (0.05) and each frond is wider than its two villa rows, so a strip of beach runs along every frond.
+ */
 function palmJumeirah(cx: number, cz: number): THREE.Group {
   const g = group({ x: cx, z: cz });
-  const H = 0.12;
+  const H = 0.075;
   const TERRA = mat(0xd98c5f);
   const ROOF = mat(0xb9654a);
   g.add(patch(0.5, 5.2, SAND, { h: H, z: -0.2 }));
@@ -274,12 +277,12 @@ function palmJumeirah(cx: number, cz: number): THREE.Group {
     const u = (i - (n - 1) / 2) / ((n - 1) / 2);
     const len = 1.95 - u * u * 0.9;
     for (const s of [-1, 1]) {
-      g.add(patch(len, 0.24, SAND, { h: H, x: s * (0.25 + len / 2), z }));
+      g.add(patch(len, 0.34, SAND, { h: H, x: s * (0.25 + len / 2), z }));
       const villas = Math.floor(len / 0.3);
       for (let k = 0; k < villas; k++) {
         const x = s * (0.5 + k * 0.3);
-        g.add(box(0.15, 0.1, 0.07, k % 2 ? WHITE : TERRA, { x, y: H, z: z + 0.15 }));
-        g.add(box(0.15, 0.1, 0.07, k % 2 ? TERRA : WHITE, { x, y: H, z: z - 0.15 }));
+        g.add(box(0.15, 0.1, 0.07, k % 2 ? WHITE : TERRA, { x, y: H, z: z + 0.09 }));
+        g.add(box(0.15, 0.1, 0.07, k % 2 ? TERRA : WHITE, { x, y: H, z: z - 0.09 }));
       }
       g.add(box(0.1, 0.08, 0.1, ROOF, { x: s * (0.25 + len), y: H, z }));
     }
@@ -306,7 +309,6 @@ export default function build(): CityScene {
 
   root.add(patch(19.6, 6.4, SEA, { z: 6.6, h: 0.05 }));
   root.add(patch(19.6, 0.5, SAND_LIGHT, { z: 3.15, h: 0.07 }));
-  root.add(patch(19.6, 0.1, mat(0xf6efe0), { z: 3.45, h: 0.09 }));
   // Pavement plaza strips.
   root.add(patch(19.6, 1.2, mat(0xc9c2b4), { z: 2.5 }));
 

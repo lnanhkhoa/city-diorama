@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { CityBuild, CityScene } from '../cities/types';
 import { waterTime } from '../kit/materials';
 import { disposeTree, mergeStatic } from '../kit/merge';
+import { bakeShore, waterShore } from '../kit/shore';
 
 export const INTRO_MS = 900;
 const OUTRO_MS = 280;
@@ -112,6 +113,9 @@ export class CityStage {
       if (k >= 1) tr.done?.();
       return k < 1;
     });
+    // The one tile on stage (incoming or outgoing): its water samples the shore map in the tile's own frame.
+    const holder = this.root.children[0];
+    if (holder) waterShore.scale.value = Math.max(0.001, holder.scale.x);
     if (!this.reducedMotion) {
       this.city?.scene.update?.(t, dt);
       waterTime.value = t;
@@ -120,6 +124,8 @@ export class CityStage {
 
   private mount(scene: CityScene, instant: boolean): void {
     mergeStatic(scene.root);
+    bakeShore(scene.root);
+    waterShore.scale.value = instant ? 1 : 0.001;
     // Place every mover on its path now: with reduced motion this is the only update it gets.
     scene.update?.(0, 0);
     const holder = new THREE.Group();

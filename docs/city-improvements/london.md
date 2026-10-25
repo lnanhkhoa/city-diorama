@@ -4,7 +4,7 @@ Source: `src/cities/list/london.ts`. Part of the [city improvements](README.md) 
 
 ## Status
 
-- **Budget now:** 39,968 tris, 175 draws (limits 90,000 / 220).
+- **Budget now:** 58,968 tris, 210 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Shard rebuilt with lit bands; Tower Bridge anchors off the roads; trees and people off the lane; Big Ben ledge.
 - **Fixed 2026-10-21, second pass:** Gherkin added (`gherkin()`, `lathe` hull at (4.5, -9.1), 6.5 tall, two families of helical lattice beams, lit floor bands; reuses the Shard glass/rib materials, 0 extra draws). London Eye: rim 0.03 to 0.06, spokes 0.014, bigger hub, blue egg-shaped pods, and the whole wheel on `floodMat` so it glows at night (same draw count). St Paul's scaled 1.3x via the group, moved to (2.7, -7.4), 16 dome ribs, lit attic windows, floodlit lead dome (`LEAD` is now a `floodMat`); the terrace in front moved from z -4.1 to -3.3 and the tourists to z -4.15 so the portico is clear. Shard window bands thinned (0.4 to 0.14 tall, spacing 0.7 to 0.9). Boats stop 0.2+ clear of both bridge decks (x ends -1.1, 1.3, 4.5, 6.9); Westminster Bridge piers are now two 0.32-high stone stubs per pier line flanking the road (they no longer sit under the traffic lane).
 - **Left open:** Westminster Bridge is still a flat deck with rails (no arches); boats still do not pass under the bridges; Tower Bridge span/bascules unchanged; Rodin not needed.

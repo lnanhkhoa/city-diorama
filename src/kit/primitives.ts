@@ -417,43 +417,6 @@ export function crosswalk(x: number, z: number, roadW: number, p: { ry?: number;
 // Props
 // ---------------------------------------------------------------------------
 
-export function tree(p: Place & { s?: number; kind?: 'round' | 'cone' | 'palm' | 'blossom' } = {}): THREE.Group {
-  const s = p.s ?? 1;
-  const g = group(p);
-  const kind = p.kind ?? 'round';
-  if (kind === 'palm') {
-    g.add(cylinder(0.04 * s, 0.06 * s, 1.1 * s, M.trunk, { segments: 6 }));
-    for (let i = 0; i < 6; i++) {
-      const leaf = box(0.08 * s, 0.03 * s, 0.55 * s, M.leaf, { y: 1.05 * s });
-      leaf.rotation.set(0.5, (i / 6) * Math.PI * 2, 0, 'YXZ');
-      leaf.geometry.translate(0, 0, 0.25 * s);
-      g.add(leaf);
-    }
-    return g;
-  }
-  // Per-instance variation from position keeps rows of trees from looking stamped.
-  const v = Math.abs(Math.sin((p.x ?? 0) * 12.9898 + (p.z ?? 0) * 78.233)) % 1;
-  const sv = s * (0.85 + v * 0.3);
-  g.add(cylinder(0.035 * sv, 0.05 * sv, 0.32 * sv, M.trunk, { segments: 6 }));
-  if (kind === 'cone') {
-    g.add(cone(0.3 * sv, 0.6 * sv, M.leafDark, { y: 0.2 * sv, segments: 7 }));
-    g.add(cone(0.22 * sv, 0.55 * sv, M.leafDark, { y: 0.52 * sv, segments: 7 }));
-  } else {
-    const main = kind === 'blossom' ? mat(0xf2b8c6, { flat: true }) : v > 0.5 ? M.leaf : M.leafDark;
-    const accent = kind === 'blossom' ? mat(0xf7d3dc, { flat: true }) : v > 0.5 ? M.leafDark : M.leaf;
-    const blob = (r: number, x: number, y: number, z: number, m: Mat) => {
-      const geo = new THREE.IcosahedronGeometry(r * sv, 0);
-      geo.rotateY(v * 3);
-      geo.translate(x * sv, y * sv, z * sv);
-      g.add(mesh(geo, m));
-    };
-    blob(0.28, 0, 0.5, 0, main);
-    blob(0.18, 0.16, 0.42, 0.08, accent);
-    blob(0.17, -0.12, 0.68, -0.06, main);
-  }
-  return g;
-}
-
 export function lamp(p: Place = {}): THREE.Group {
   const g = group(p);
   g.add(cylinder(0.015, 0.022, 0.5, M.dark, { segments: 5 }));

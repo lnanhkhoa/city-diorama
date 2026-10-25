@@ -328,20 +328,19 @@ export default function build(): CityScene {
     root.add(patch(5.6, 0.2, pav, { x: 6.9, z }));
   }
 
-  // Sumida river.
-  root.add(patch(19.6, 1.5, waterMat(0x4fa3d1), { z: -4.0 }));
-  // Kerbs and foam stop short of the road so they do not cross the bridge carriageway.
+  // Sumida river: its surface sits low (0.02) so the road crosses it on a thin deck with open water underneath.
+  root.add(patch(19.6, 1.5, waterMat(0x4fa3d1), { z: -4.0, h: 0.02 }));
+  // Kerbs stop short of the road so they do not cross the bridge carriageway.
   for (const z of [-4.81, -3.19]) {
     root.add(patch(11.9, 0.12, M.concrete, { x: -3.85, z, h: 0.08 }));
     root.add(patch(5.9, 0.12, M.concrete, { x: 6.85, z, h: 0.08 }));
   }
-  for (const z of [-4.68, -3.32]) {
-    root.add(patch(11.9, 0.1, mat(0xe8f4f8), { x: -3.85, z, h: 0.05 }));
-    root.add(patch(5.9, 0.1, mat(0xe8f4f8), { x: 6.85, z, h: 0.05 }));
-  }
 
   // Streets: Shibuya crossing at (3, 5.5).
-  root.add(road(3, 9.8, 3, -9.8, 1.8, { material: ROAD }));
+  root.add(road(3, 9.8, 3, -2.95, 1.8, { material: ROAD }));
+  root.add(road(3, -5.05, 3, -9.8, 1.8, { material: ROAD }));
+  // The bridge deck: flush with the road (top 0.05), its soffit clear of the water.
+  root.add(box(1.8, 0.018, 2.1, ROAD, { x: 3, y: 0.032, z: -4.0 }));
   root.add(road(-9.8, 5.5, 9.8, 5.5, 1.8, { material: ROAD, lines: false }));
   root.add(patch(1.8, 1.8, ROAD, { x: 3, z: 5.5, h: 0.055 }));
   for (const sx of [2.15, 3.85]) root.add(box(0.05, 0.14, 1.5, M.white, { x: sx, y: 0.05, z: -4.0 }));
@@ -475,9 +474,9 @@ export default function build(): CityScene {
   for (let i = 0; i < 4; i++) root.add(anim.follow(pm(car({ y: 0.05 })), [[3.35, -9.6], [3.35, 9.6]], 1.2, i / 4 + 0.12));
 
   // River boats.
-  // Boats turn back short of the road bridge (its deck is level with the water).
-  root.add(anim.bob(anim.follow(pm(boat({ y: 0.03, color: 0xe8d27a, len: 0.9 })), [[-9.0, -4.2], [1.5, -4.2]], 0.5, 0.1), 0.012, 1.4));
-  root.add(anim.bob(anim.follow(pm(boat({ y: 0.03, color: 0xf4f4f0, len: 0.7 })), [[9.0, -3.8], [4.4, -3.8]], 0.6, 0.6), 0.012, 1.4));
+  // Boats turn back short of the low road bridge.
+  root.add(anim.bob(anim.follow(pm(boat({ y: 0.01, color: 0xe8d27a, len: 0.9 })), [[-9.0, -4.2], [1.5, -4.2]], 0.5, 0.1), 0.012, 1.4));
+  root.add(anim.bob(anim.follow(pm(boat({ y: 0.01, color: 0xf4f4f0, len: 0.7 })), [[9.0, -3.8], [4.4, -3.8]], 0.6, 0.6), 0.012, 1.4));
 
   return { root, update: anim.update };
 }
