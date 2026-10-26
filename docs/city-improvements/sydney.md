@@ -4,7 +4,7 @@ Source: `src/cities/list/sydney.ts`. Part of the [city improvements](README.md) 
 
 ## Status
 
-- **Budget now:** 94,211 tris, 198 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
+- **Budget now:** 94,211 tris, 198 draws (limits 200,000 / 300), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Opera glazing and mullions, bridge lamps, tower beacon, clock hall, lawn gaps, rib aliasing.
 - **Fixed 2026-10-21 (second pass):** `BEACON` is now `floodMat(0xd9d4cc, 0xff2211, 2.5)`: a pale lens by day, red glow at night only. `cbdTower()` gained crown types 3 (glass pyramid with spire), 4 (stepped Art-Deco with flagpole) and 5 (slanted wedge), spread over 11 towers in `CBD`. North Shore now holds `lunaPark()` (striped twin towers, lit grin, ferris-wheel ring) at (4.9, 8.65), two low apartment blocks (3.2, 9.1) and (6.3, 9.0) with a shopfront, gable / mansard / hip houses, a Kirribilli ferry wharf (`wharf()` turned and shortened) with a moored ferry at (5.2, 7.6), and `fortDenison()` (round sandstone tower, slate cap, lantern) at (0.3, 8.2). Walsh Bay warehouses use gable and hip roofs (two rotated) instead of four flat boxes.
 - **Left open:** the Opera glass uses the shared `windowMaterial`, so it cannot be tinted bronze (acceptable). The Luna Park face was not inspected zoomed on screen (the orbit camera could not be framed on the front corner); the wharf, houses, fort and Walsh Bay were checked by day and night. No Rocks interior terraces or extra cross street yet.

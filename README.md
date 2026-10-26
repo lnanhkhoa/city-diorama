@@ -75,7 +75,7 @@ Hyper3D Rodin offline and baked into source as quantised, untextured meshes.
 Textures are allowed; the kit trees draw theirs in code when the app loads
 (`src/kit/trees.ts`).
 After a city builds, static meshes are merged per material, so each city
-renders in under 220 draw calls and 150k triangles (a test enforces both). In
+renders in under 300 draw calls and 200k triangles (a test enforces both). In
 `bun run dev`, saving a city file swaps it in place and keeps the camera.
 
 To add or change a city, follow [docs/city-authoring.md](docs/city-authoring.md).

@@ -4,7 +4,7 @@ Source: `src/cities/list/paris.ts`. Part of the [city improvements](README.md) a
 
 ## Status
 
-- **Budget now:** 64,890 tris, 159 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework. Before the people pass: 52,242 / 109.
+- **Budget now:** 64,890 tris, 159 draws (limits 200,000 / 300), measured 2026-10-23 after the kit tree rework. Before the people pass: 52,242 / 109.
 
 Reference: assets/paris.jpeg.
 

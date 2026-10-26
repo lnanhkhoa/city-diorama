@@ -4,7 +4,7 @@ Source: `src/cities/list/new-york.ts`. Part of the [city improvements](README.md
 
 ## Status
 
-- **Budget now:** 57,904 tris, 208 draws (limits 150,000 / 220), measured 2026-10-23 after the kit tree rework.
+- **Budget now:** 57,904 tris, 208 draws (limits 200,000 / 300), measured 2026-10-23 after the kit tree rework.
 - **Fixed 2026-10-21:** Brooklyn Bridge crosses an inlet; streets cleared; lanes run to the plinth edge.
 - **Fixed 2026-10-21 (second pass):** `empireState()` gets two low wings (z ±2.1 of the base), five continuous piers per face on every shaft, floodlit upper shafts and a floodlit lantern with a lit band and a beacon on the mast. `oneWTC()`: glass shaft glows blue at night under 18 lit `windowMaterial` bands (level lines across the facets), lit flat-shaded crown plus a beacon at the spire foot. New `chrysler(-1, -8.2)` (setback shafts, six terraced `M.steel` arches with lit triangular windows, steel spire) replaces the third midtown `artDeco`; `artDeco` has a `finial` flag. Statue copper is floodlit and the torch has a lamp flame (position from the baked mesh's top vertex). Bridge: floodlit towers (`BRIDGE_STONE`), tower-top and deck-edge lamps. Inlet widened (x from 5.4, z 1.7..6.1). East `walkUp` row moved to x=9.0 so the fire escapes end at x≈9.72, inside the plinth.
 - **Left open:** the bridge is straight along Z, not the poster's diagonal. Two `walkUp` blocks on the z=9.1 street were removed rather than moved. No Flatiron wedge or Rockefeller Center yet.

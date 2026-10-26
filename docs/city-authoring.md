@@ -72,8 +72,8 @@ object stands; `Place = { x, y, z, ry }`.
 - Static meshes are merged automatically by material after `build()`. Anything
   animated must go through `Animator` (which flags it dynamic).
 - `build()` must be deterministic (use `rng(seed)`, never `Math.random`).
-- Budget after static merging (enforced by `tests/cities.test.ts`): under 150k
-  triangles and at most 220 draw calls. Prefer `windows: 'bands'` on large
+- Budget after static merging (enforced by `tests/cities.test.ts`): under 200k
+  triangles and at most 300 draw calls. Prefer `windows: 'bands'` on large
   towers and lower `segments` on small round things.
 - Build each hero landmark from its identity outward: silhouette and
   proportions first, then construction (setbacks, arches, ribs, openings,

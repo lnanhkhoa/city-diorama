@@ -4,7 +4,7 @@ Source: `src/cities/list/kuala-lumpur.ts`. Part of the [city improvements](READM
 
 ## Status
 
-- **Budget now:** 111,360 tris, 172 draws (limits 150,000 / 220), measured 2026-10-23 after the asset-quality pass below.
+- **Budget now:** 111,360 tris, 172 draws (limits 200,000 / 300), measured 2026-10-23 after the asset-quality pass below.
 - **Asset-quality pass 2026-10-23** (`plans/261022-0945-kuala-lumpur-asset-quality`). The 2026-10-22 critique against `assets/kuala-lumpur.jpeg` listed 20 assets. All of them except Batu and Murugan were rebuilt procedurally, with each pass checked against a capture and a pair sheet:
   - **Petronas:** a 16-point star-and-lobe plan, straight to 55% of its height, five sloped setbacks, a pinnacle with a ring ball, fine pewter ribbons instead of zebra bands, and the round 44-storey annexes. It now costs 6.7k tris per tower, down from 12.6k.
   - **Skybridge and Suria:** the skybridge sits at 37.6% on V legs from 26%. The blue Suria dome became a curved glazed front.
