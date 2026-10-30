@@ -6,7 +6,7 @@ import {
 import type { CityScene } from '../types';
 import LIBERTY from '../shapes/statue-of-liberty.shape';
 
-const STREET = mat(0x5d636b, { roughness: 0.95 });
+const STREET = mat(0x5d636b, { roughness: 0.95, surface: 'road' });
 const LIMESTONE = mat(0xd9d2c3);
 const GLASS_TALL = mat(0x86a9c9, { roughness: 0.15, metalness: 0.6 });
 // Flat: One WTC's crown is a 4-segment cylinder, whose smooth normals streak the glass.

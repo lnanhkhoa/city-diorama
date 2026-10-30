@@ -445,7 +445,7 @@ function wheels(g: THREE.Group, halfW: number, axles: number[]): void {
 export function car(p: Place & { color?: THREE.ColorRepresentation; taxi?: boolean } = {}): THREE.Group {
   const g = group(p);
   const c = p.taxi ? 0xf2c230 : p.color ?? CAR_COLORS[Math.abs(Math.round((p.x ?? 0) * 7 + (p.z ?? 0) * 13)) % CAR_COLORS.length];
-  const paint = mat(c, { roughness: 0.35, metalness: 0.1 });
+  const paint = mat(c, { roughness: 0.35, metalness: 0.1, surface: 'none' });
   g.add(box(0.22, 0.08, 0.44, paint, { y: 0.04 }));
   g.add(box(0.19, 0.08, 0.24, paint, { y: 0.12, z: -0.03 }));
   g.add(box(0.2, 0.055, 0.2, windowMaterial, { y: 0.13, z: -0.03 }));
@@ -458,7 +458,7 @@ export function car(p: Place & { color?: THREE.ColorRepresentation; taxi?: boole
 
 export function bus(p: Place & { color?: THREE.ColorRepresentation } = {}): THREE.Group {
   const g = group(p);
-  const paint = mat(p.color ?? 0xc8433a, { roughness: 0.4 });
+  const paint = mat(p.color ?? 0xc8433a, { roughness: 0.4, surface: 'none' });
   g.add(box(0.26, 0.24, 0.8, paint, { y: 0.04 }));
   g.add(box(0.27, 0.07, 0.7, windowMaterial, { y: 0.17 }));
   g.add(box(0.27, 0.02, 0.82, M.white, { y: 0.28 }));
@@ -479,8 +479,9 @@ export function boat(p: Place & { color?: THREE.ColorRepresentation; len?: numbe
 }
 
 const PEOPLE_COLORS = [0xc8433a, 0x3d6fb6, 0xe0b43a, 0x2f343b, 0xf4f4f0, 0x6a9a5b, 0x9a5bb0];
-const SKIN = mat(0xe2b48e);
-const HAIR = [mat(0x2a211c), mat(0x6b4a2e), mat(0xc9a06a)];
+// People stay dry and snow-free: no white heads or shoulders.
+const SKIN = mat(0xe2b48e, { surface: 'none' });
+const HAIR = [mat(0x2a211c, { surface: 'none' }), mat(0x6b4a2e, { surface: 'none' }), mat(0xc9a06a, { surface: 'none' })];
 
 /**
  * Pedestrian, ~0.23 tall (1 unit ≈ 8 m): trousers, a flared coat with arms,
@@ -494,7 +495,7 @@ export function person(p: Place & { color?: THREE.ColorRepresentation; umbrella?
   const facing = (((Math.sin((p.x ?? 0) * 12.9898 + (p.z ?? 0) * 78.233) * 43758.5453) % 1) + 1) % 1;
   const g = group({ ...p, ry: p.ry ?? (placed ? facing * Math.PI * 2 : 0) });
   const seed = Math.abs(Math.round((p.x ?? 0) * 11 + (p.z ?? 0) * 5));
-  const coat = mat(p.color ?? PEOPLE_COLORS[seed % PEOPLE_COLORS.length]);
+  const coat = mat(p.color ?? PEOPLE_COLORS[seed % PEOPLE_COLORS.length], { surface: 'none' });
   for (const sx of [-1, 1]) g.add(cylinder(0.011, 0.013, 0.085, M.dark, { x: sx * 0.015, segments: 4, ry: Math.PI / 4 }));
   g.add(cylinder(0.03, 0.04, 0.1, coat, { y: 0.08, segments: 6 }));
   for (const sx of [-1, 1]) g.add(cylinder(0.01, 0.011, 0.075, coat, { x: sx * 0.038, y: 0.1, segments: 4, ry: Math.PI / 4 }));
@@ -505,7 +506,7 @@ export function person(p: Place & { color?: THREE.ColorRepresentation; umbrella?
     const u = group({ x: 0.04, y: 0.17 });
     u.rotation.x = -0.18;
     u.add(cylinder(0.004, 0.004, 0.13, M.dark, { segments: 3 }));
-    u.add(lathe([[0.085, 0], [0.078, 0.015], [0.055, 0.035], [0.025, 0.048], [0, 0.052]], mat(p.umbrella), { y: 0.1, segments: 8 }));
+    u.add(lathe([[0.085, 0], [0.078, 0.015], [0.055, 0.035], [0.025, 0.048], [0, 0.052]], mat(p.umbrella, { surface: 'none' }), { y: 0.1, segments: 8 }));
     u.add(cylinder(0.003, 0.003, 0.02, M.dark, { y: 0.15, segments: 3 }));
     g.add(u);
   }

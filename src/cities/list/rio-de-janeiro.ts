@@ -1,46 +1,74 @@
 import * as THREE from 'three';
 import {
-  Animator, M, area, beam, box, building, car, cone, createBase, crosswalk, cylinder, floodMat, group, lamp, lampMaterial, lathe, mat,
-  patch, person, prism, rng, road, row, scatter, shape, sphere, tree, boat, waterMat, windowMaterial, type Place,
+  Animator, M, area, beam, box, building, car, cone, createBase, crosswalk, cylinder, dome, floodMat, group, lamp, lampMaterial, mat,
+  patch, patchSurface, person, prism, rng, road, row, scatter, shape, tree, boat, waterMat, windowMaterial, type Place,
 } from '../../kit';
 import type { CityScene } from '../types';
 import CHRIST from '../shapes/christ-redeemer.shape';
-import CORCOVADO from '../shapes/corcovado.shape';
+import CORCOVADO_SHAPE from '../shapes/corcovado.shape';
 import SUGARLOAF from '../shapes/sugarloaf.shape';
 
-const GRANITE = mat(0xa6a39a, { roughness: 0.9, flat: true });
-const FOREST = mat(0x4f9444, { flat: true });
+// Layout follows assets/rio-de-janeiro.jpeg (positions read off the poster through a homography fitted to the plinth
+// corners, with the back corner predicted from the app camera). The Copacabana crescent runs along the whole front
+// (z = +10) edge: sea, sand, the black-and-white wave promenade and Avenida Atlântica, backed by a wall of tall
+// apartment blocks. A central avenue runs diagonally from the beach toward the back corner, between Corcovado with
+// Christ (left) and Sugarloaf (right); a small bay sits behind them. On the right the Maracanã and the
+// Maracanãzinho dome stand in front of a favela climbing terraces along the back and right edges.
+
+const GROUND = mat(0xc9cbc8, { roughness: 0.9 });
+const GRANITE = mat(0x8d8174, { roughness: 0.9, flat: true });
+const FOREST = mat(0x3f7a36, { flat: true });
 const SAND = mat(0xf0dcaa);
+const SEA = waterMat(0x3f9fcf);
 // Floodlit at night, as the real statue is.
 const STATUE = floodMat(0xf6f5ef, 0xe4ecff, 0.6, { roughness: 0.6 });
 // Stadium pitch under floodlights at night.
 const PITCH = floodMat(0x5e9b46, 0x9fe07a, 0.35);
-const PROM_W = mat(0xf4f1ea);
-const PROM_B = mat(0x2e3238);
+const PITCH_LIGHT = floodMat(0x74b257, 0xb5f08f, 0.35);
+const TERRACE = mat(0x6d8a4c, { flat: true });
 const FAVELA = [0xe8503a, 0xf2b630, 0x3aa0d8, 0x62b94e, 0xe66fa8, 0xf08a3c, 0x8a62c9, 0x2fb5a3, 0xf4e04d, 0xd9482f];
+// Favela roofs: bare concrete slabs and a few clay tiles.
+const FAVELA_ROOFS = [0xd9d3c7, 0xe8e2d6, 0xb9b3a7, 0xc9693f];
 const UMBRELLAS = [0xe8503a, 0xf2b630, 0x3aa0d8, 0xe66fa8, 0x62b94e, 0xf08a3c];
 // Beachwear: coral, turquoise, yellow, white, green, hot pink, sky blue.
 const BEACHWEAR = [0xff6b5a, 0x1fc1c9, 0xffd23f, 0xffffff, 0x3fbf5f, 0xe66fa8, 0x3aa0d8, 0xf08a3c];
-// Seleção kits for the pitch: yellow, blue, white, green.
-const KITS = [0xffd23f, 0x2a62c8, 0xffd23f, 0xffffff, 0x2a62c8, 0x3fbf5f];
-const PASTEL = [0xf1e3c4, 0xe9c9a8, 0xd9e6e2, 0xf0d1d1, 0xdbe4f0, 0xf4efe0];
+// Copacabana apartment walls as in the poster: concrete grey, sand, cream, salmon, blue-grey, white, taupe.
+const FACADES = [0xbdbcb6, 0xdac9a6, 0xece5d3, 0xc98a6a, 0x9eabc2, 0xf1efe8, 0x8c8173, 0xd9c08f, 0xc7b8a4];
 
-/** Radius at height y for a hill of radius R and height H; k < 1 bulges, k > 1 is a spike. */
-function hillProfile(R: number, H: number, k: number, top: number, y0 = 0, y1 = H, steps = 14): [number, number][] {
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= steps; i++) {
-    const y = y0 + ((y1 - y0) * i) / steps;
-    const r = top + (R - top) * Math.pow(Math.max(0, 1 - y / H), k);
-    pts.push([r, y]);
+/** Copacabana's black-and-white wave paving, drawn in code: one wave and two stripes per tile, tiling both ways. */
+function promenadeMaterial(): THREE.MeshStandardMaterial {
+  const S = 128;
+  const data = new Uint8Array(S * S * 4);
+  for (let j = 0; j < S; j++) {
+    for (let i = 0; i < S; i++) {
+      const phase = (j / S) * 2 + 0.3 * Math.sin((i / S) * Math.PI * 2);
+      const f = phase - Math.floor(phase);
+      // Black stripe for the first 30% of each band, faded to grey over ~1.5 texels at both edges so it does not
+      // shimmer when minified (one band is S / 2 texels).
+      const edge = Math.min(1, (Math.min(f, Math.abs(f - 0.3), 1 - f) * S) / 2 / 1.5);
+      const lum = 0.565 + ((f < 0.3 ? 0.18 : 0.95) - 0.565) * edge;
+      const k = (j * S + i) * 4;
+      data[k] = data[k + 1] = Math.round(255 * lum);
+      data[k + 2] = Math.round(255 * Math.min(1, lum * 1.02));
+      data[k + 3] = 255;
+    }
   }
-  return pts;
+  const t = new THREE.DataTexture(data, S, S);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1.3, 1.3);
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = 4;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.needsUpdate = true;
+  const m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.75 });
+  patchSurface(m, 'ground');
+  return m;
 }
+let promenade: THREE.MeshStandardMaterial | undefined;
 
-function hillR(R: number, H: number, k: number, top: number, y: number): number {
-  return top + (R - top) * Math.pow(Math.max(0, 1 - y / H), k);
-}
-
-function ellipse(a: number, b: number, n = 28): [number, number][] {
+function ellipse(a: number, b: number, n = 36): [number, number][] {
   const pts: [number, number][] = [];
   for (let i = 0; i < n; i++) {
     const t = (i / n) * Math.PI * 2;
@@ -49,31 +77,69 @@ function ellipse(a: number, b: number, n = 28): [number, number][] {
   return pts;
 }
 
-/** Christ the Redeemer: baked Rodin statue on its pedestal (one stone part), arms across x. ~2.3 tall. */
-function christ(p: Place): THREE.Group {
-  return shape(CHRIST, [STATUE], { ...p, height: 2.3, smooth: true });
+/** Piecewise-linear z(x) through `[x, z]` points sorted by x. */
+function curve(pts: [number, number][]): (x: number) => number {
+  return (x) => {
+    if (x <= pts[0][0]) return pts[0][1];
+    for (let k = 0; k < pts.length - 1; k++) {
+      const [x0, z0] = pts[k];
+      const [x1, z1] = pts[k + 1];
+      if (x <= x1) return z0 + ((x - x0) / (x1 - x0)) * (z1 - z0);
+    }
+    return pts[pts.length - 1][1];
+  };
 }
 
-// Corcovado: baked Rodin massif (scripts/rodin/assets.ts), parts rainforest + granite, its sheer cliff on local +z. Turned
-// a quarter right so the cliff faces the camera. The summit plateau (measured off the bake: centre (0.012, 0.987, 0.026)
-// of the normalised shape, about 0.75 across at this height) carries a viewing terrace and Christ.
-const CORCOVADO_H = 6.4;
-function corcovado(p: Place): THREE.Group {
-  const g = group(p);
-  const ry = Math.PI / 4;
-  g.add(shape(CORCOVADO, [FOREST, GRANITE], { height: CORCOVADO_H, ry }));
-  const [sx, sy, sz] = [0.012, 0.987, 0.026].map((v) => v * CORCOVADO_H);
-  const x = sx * Math.cos(ry) + sz * Math.sin(ry);
-  const z = -sx * Math.sin(ry) + sz * Math.cos(ry);
-  g.add(cylinder(0.5, 0.42, 0.12, PROM_W, { x, y: sy - 0.04, z, segments: 12 }));
-  g.add(cylinder(0.3, 0.34, 0.08, STATUE, { x, y: sy + 0.08, z, segments: 8 }));
-  g.add(christ({ x, y: sy + 0.16, z }));
+// Corcovado: baked Rodin massif (scripts/rodin/assets.ts), parts rainforest + granite, its sheer cliff on local +z. The
+// bake is a steep tower of rock; the poster's mountain is a broad forested massif, so it is widened and turned so the
+// forest climbs the flank facing the camera, the cliff toward the bay. Footprint (sampled) x -9.8..-2.1,
+// z -7.8..0.1. The summit plateau (centre (0.012, 0.026) of the normalised footprint, terrain 0.998 of the height
+// there) carries a viewing terrace and Christ.
+const CORCOVADO = { x: -5.9, z: -3.8, h: 6.3, xz: 1.2, ry: (-3 * Math.PI) / 4 };
+const SUMMIT = (() => {
+  const { x, z, h, xz, ry } = CORCOVADO;
+  const sx = 0.012 * h * xz;
+  const sz = 0.026 * h * xz;
+  return { x: x + sx * Math.cos(ry) + sz * Math.sin(ry), y: 0.995 * h, z: z - sx * Math.sin(ry) + sz * Math.cos(ry) };
+})();
+function corcovado(rand: () => number): THREE.Group {
+  const { x, y, z } = SUMMIT;
+  const g = group();
+  const massif = shape(CORCOVADO_SHAPE, [FOREST, GRANITE], { x: CORCOVADO.x, z: CORCOVADO.z, height: CORCOVADO.h, ry: CORCOVADO.ry, xzScale: CORCOVADO.xz });
+  g.add(massif, forestCover(massif, rand, 0.62, 0.95, 4.6));
+  g.add(cylinder(0.62, 0.5, 0.14, M.white, { x, y: y - 0.06, z, segments: 14 }));
+  g.add(cylinder(0.3, 0.34, 0.1, STATUE, { x, y: y + 0.08, z, segments: 8 }));
+  // Christ the Redeemer: baked Rodin statue on its pedestal (one stone part), arms across x.
+  g.add(shape(CHRIST, [STATUE], { x, y: y + 0.18, z, height: 2.4, smooth: true }));
   return g;
 }
 
-/** Sugarloaf with its Urca shoulder: baked Rodin massif (forest skirt, bare granite); shoulder faces the cable-car station. */
-function sugarloaf(p: Place): THREE.Group {
-  return shape(SUGARLOAF, [FOREST, GRANITE], { ...p, height: 4.4, ry: Math.PI });
+/**
+ * Kit trees over the forest part (part 0) of a baked massif, up to `maxY`, so its rainforest reads as leafy canopy
+ * as in the poster rather than as flat green facets. Heights come from rays cast down onto the bake.
+ */
+function forestCover(massif: THREE.Group, rand: () => number, step: number, s: number, maxY: number): THREE.Group {
+  massif.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(massif);
+  const forest = massif.children[0];
+  const rc = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const from = new THREE.Vector3();
+  const g = group();
+  for (let gx = bounds.min.x + step / 2; gx < bounds.max.x; gx += step) {
+    for (let gz = bounds.min.z + step / 2; gz < bounds.max.z; gz += step) {
+      const x = gx + (rand() - 0.5) * step * 0.8;
+      const z = gz + (rand() - 0.5) * step * 0.8;
+      if (Math.abs(x) > 9.6 || Math.abs(z) > 9.6) continue;
+      rc.set(from.set(x, 50, z), down);
+      const hit = rc.intersectObject(massif, true)[0];
+      // Above 0.3 only: the skirt's thin edge runs under the streets and blocks around it.
+      if (!hit || hit.object !== forest || hit.point.y < 0.3 || hit.point.y > maxY) continue;
+      const ts = s * (0.8 + rand() * 0.4);
+      g.add(tree({ x, y: hit.point.y - 0.1 * ts, z, kind: 'round', s: ts }));
+    }
+  }
+  return g;
 }
 
 function gondola(): THREE.Group {
@@ -101,66 +167,101 @@ function cableCar(anim: Animator, a: [number, number, number], b: [number, numbe
   return g;
 }
 
-function favelaHill(p: Place, rand: () => number): THREE.Group {
-  const g = group(p);
-  const R = 2.6;
-  const H = 3.4;
-  const k = 0.9;
-  g.add(lathe(hillProfile(R, H, k, 0.2), FOREST, { segments: 22 }));
-  for (let lvl = 0; lvl < 8; lvl++) {
-    const y = 0.15 + lvl * 0.38;
-    const r = hillR(R, H, k, 0.2, y);
-    const count = Math.max(4, Math.round(15 - lvl * 1.4));
-    for (let i = 0; i < count; i++) {
-      const a = -0.1 + ((i + rand() * 0.6) / count) * 2.1;
-      const rr = r * (0.9 + rand() * 0.1);
-      const s = 0.26 + rand() * 0.2;
-      const h = 0.25 + rand() * 0.25;
-      const c = mat(FAVELA[Math.floor(rand() * FAVELA.length)]);
-      const x = Math.cos(a) * rr;
-      const z = Math.sin(a) * rr;
-      const ry = -a + Math.PI / 2;
-      g.add(box(s, h, s, c, { x, z, y: y - 0.05, ry: ry + (rand() - 0.5) * 0.3 }));
-      g.add(box(s * 1.08, 0.04, s * 1.08, mat(0x8a5a40), { x, z, y: y - 0.05 + h, ry }));
-      // Lit window on the outward face of two houses in three.
-      if (i % 3 !== 0) g.add(box(s * 0.35, h * 0.35, 0.02, windowMaterial, { x: x + Math.cos(a) * s * 0.52, z: z + Math.sin(a) * s * 0.52, y: y - 0.05 + h * 0.4, ry }));
+/**
+ * Favela on terraces stepping up toward the plinth edge: along the back edge (rising toward -z) and down the right
+ * edge (rising toward +x). One row of small painted houses on each terrace, some with a second storey.
+ */
+function favela(rand: () => number): THREE.Group {
+  const g = group();
+  const house = (x: number, y: number, z: number, ry: number, maxS: number) => {
+    const s = Math.min(maxS, 0.36 + rand() * 0.16);
+    const h = 0.24 + rand() * 0.2;
+    const c = mat(FAVELA[Math.floor(rand() * FAVELA.length)]);
+    g.add(box(s, h, s * (0.85 + rand() * 0.3), c, { x, y, z, ry }));
+    g.add(box(s * 1.08, 0.04, s * 1.08, mat(FAVELA_ROOFS[Math.floor(rand() * FAVELA_ROOFS.length)]), { x, y: y + h, z, ry }));
+    if (rand() < 0.3) {
+      const s2 = s * 0.7;
+      g.add(box(s2, 0.2, s2, mat(FAVELA[Math.floor(rand() * FAVELA.length)]), { x: x + (rand() - 0.5) * 0.08, y: y + h + 0.04, z, ry }));
     }
-  }
-  g.add(sphere(0.3, M.leaf, { x: -0.1, z: 0.1, y: H - 0.05, segments: 7 }));
+    // A lit window on the face toward the camera for two houses in three.
+    if (rand() < 0.66) {
+      const nx = Math.sin(ry);
+      const nz = Math.cos(ry);
+      g.add(box(s * 0.35, h * 0.35, 0.02, windowMaterial, { x: x + nx * s * 0.52, y: y + h * 0.4, z: z + nz * s * 0.52, ry }));
+    }
+  };
+  // Back terraces: x 3.6..9.8 (right of Sugarloaf), front edges stepping back from z -7.5.
+  const BACK = [-7.5, -8.1, -8.7, -9.25];
+  BACK.forEach((z0, k) => {
+    const y = 0.32 * (k + 1);
+    g.add(box(6.2, y, -9.8 - z0, TERRACE, { x: 6.7, z: (z0 - 9.8) / 2 }));
+    const zEnd = k + 1 < BACK.length ? BACK[k + 1] : -9.8;
+    for (let x = 3.85 + rand() * 0.2; x < 9.55; x += 0.5 + rand() * 0.1) {
+      house(x, y, (z0 + zEnd) / 2 + (rand() - 0.5) * 0.06, (rand() - 0.5) * 0.25, (z0 - zEnd) * 0.9);
+    }
+  });
+  // Right terraces: z -7.5..-1.9, front edges stepping right from x 8.8.
+  const RIGHT = [8.8, 9.3];
+  RIGHT.forEach((x0, k) => {
+    const y = 0.32 * (k + 1);
+    g.add(box(9.8 - x0, y, 5.6, TERRACE, { x: (x0 + 9.8) / 2, z: -4.7 }));
+    const xEnd = k + 1 < RIGHT.length ? RIGHT[k + 1] : 9.8;
+    for (let z = -2.15 - rand() * 0.2; z > -7.4; z -= 0.5 + rand() * 0.1) {
+      house((x0 + xEnd) / 2 + (rand() - 0.5) * 0.04, y, z, Math.PI / 2 + (rand() - 0.5) * 0.25, (xEnd - x0) * 0.9);
+    }
+  });
   return g;
 }
 
+/** Maracanã: tiered bowl inside a colonnade, the white roof ring with radial ribs, floodlit pitch. Long axis on local x. */
 function maracana(p: Place): THREE.Group {
   const g = group(p);
-  // Tiered stands rising outward, then the roof ring on columns.
-  g.add(prism(ellipse(2.35, 1.8), 0.85, mat(0xe9e6df), { holes: [ellipse(2.0, 1.45)] }));
-  g.add(prism(ellipse(2.0, 1.45), 0.55, mat(0x4a79b8), { holes: [ellipse(1.7, 1.15)] }));
-  g.add(prism(ellipse(1.7, 1.15), 0.28, mat(0xd8dde3), { holes: [ellipse(1.4, 0.85)] }));
-  g.add(prism(ellipse(2.55, 2.0), 0.1, M.white, { y: 0.86, holes: [ellipse(1.5, 1.0)] }));
-  g.add(prism(ellipse(2.4, 1.85), 0.04, M.dark, { y: 0.82, holes: [ellipse(2.3, 1.75)] }));
-  // Floodlights under the roof rim, aimed at the pitch.
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    g.add(box(0.14, 0.05, 0.05, lampMaterial, { x: Math.cos(a) * 1.55, z: Math.sin(a) * 1.05, y: 0.8, ry: -a }));
+  const A = 2.9;
+  const B = 2.55;
+  const H = 1.1;
+  g.add(prism(ellipse(A, B), H, mat(0xe9e6df), { holes: [ellipse(A - 0.3, B - 0.3)] }));
+  // Glazed concourse band, lit at night.
+  g.add(prism(ellipse(A + 0.02, B + 0.02), 0.12, windowMaterial, { y: 0.5, holes: [ellipse(A - 0.05, B - 0.05)] }));
+  g.add(prism(ellipse(A - 0.3, B - 0.3), 0.85, mat(0x3d6fb0), { holes: [ellipse(A - 0.8, B - 0.8)] }));
+  g.add(prism(ellipse(A - 0.8, B - 0.8), 0.45, mat(0x2f4f86), { holes: [ellipse(A - 1.15, B - 1.15)] }));
+  // Roof ring on the colonnade.
+  g.add(prism(ellipse(A + 0.25, B + 0.25), 0.1, M.white, { y: H, holes: [ellipse(A - 1.3, B - 1.3)] }));
+  g.add(prism(ellipse(A + 0.27, B + 0.27), 0.05, M.dark, { y: H - 0.05, holes: [ellipse(A + 0.15, B + 0.15)] }));
+  const rib = mat(0xc6cacf);
+  for (let i = 0; i < 44; i++) {
+    const a = (i / 44) * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    g.add(beam([c * (A - 1.25), H + 0.11, s * (B - 1.25)], [c * (A + 0.2), H + 0.11, s * (B + 0.2)], 0.025, rib));
   }
-  for (let i = 0; i < 20; i++) {
-    const a = (i / 20) * Math.PI * 2;
-    g.add(cylinder(0.04, 0.04, 0.86, M.white, { x: Math.cos(a) * 2.45, z: Math.sin(a) * 1.93, segments: 5 }));
+  for (let i = 0; i < 32; i++) {
+    const a = (i / 32) * Math.PI * 2;
+    g.add(cylinder(0.045, 0.045, H, M.white, { x: Math.cos(a) * (A + 0.12), z: Math.sin(a) * (B + 0.12), segments: 5 }));
   }
-  g.add(patch(2.8, 1.7, PITCH, { y: 0 }));
-  g.add(patch(0.05, 1.7, M.white, { y: 0.05, h: 0.01 }));
-  g.add(patch(1.0, 0.7, PITCH, { y: 0.04, h: 0.01 }));
+  // Floodlights under the inner roof rim, aimed at the pitch.
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    g.add(box(0.16, 0.05, 0.05, lampMaterial, { x: Math.cos(a) * (A - 1.35), z: Math.sin(a) * (B - 1.35), y: H - 0.06, ry: -a }));
+  }
+  g.add(prism(ellipse(A - 1.12, B - 1.12), 0.04, PITCH));
+  g.add(patch(2.6, 1.6, PITCH_LIGHT, { h: 0.05 }));
+  g.add(patch(0.04, 1.6, M.white, { h: 0.06 }));
   return g;
 }
 
-function selaron(p: Place): THREE.Group {
+/** Maracanãzinho: the round arena beside the stadium, a ribbed drum under a shallow white dome. */
+function maracanazinho(p: Place): THREE.Group {
   const g = group(p);
-  const cols = [0xe8503a, 0xf2b630, 0x3aa0d8, 0x62b94e, 0xf4f1ea];
-  for (let i = 0; i < 9; i++) {
-    g.add(box(1.3, 0.13, 0.28, mat(cols[i % cols.length]), { y: i * 0.13, z: -i * 0.27 }));
+  const R = 1.2;
+  g.add(cylinder(R, R, 0.55, mat(0xe9e6df), { segments: 32 }));
+  g.add(cylinder(R + 0.015, R + 0.015, 0.16, windowMaterial, { y: 0.2, segments: 32, open: true }));
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * Math.PI * 2;
+    g.add(box(0.06, 0.55, 0.06, M.white, { x: Math.cos(a) * (R + 0.03), z: Math.sin(a) * (R + 0.03), ry: -a }));
   }
-  g.add(box(0.12, 1.2, 2.5, mat(0xf2b630), { x: -0.7, z: -1.1 }));
-  g.add(box(0.12, 1.2, 2.5, mat(0x3aa0d8), { x: 0.7, z: -1.1 }));
+  g.add(cylinder(R + 0.08, R + 0.08, 0.06, M.white, { y: 0.55, segments: 32 }));
+  g.add(dome(R + 0.02, M.white, { y: 0.6, squash: 0.36, segments: 28 }));
+  g.add(cylinder(0.22, 0.26, 0.08, mat(0xd8dde3), { y: 0.6 + (R + 0.02) * 0.36 - 0.02, segments: 12 }));
   return g;
 }
 
@@ -172,227 +273,154 @@ function umbrella(x: number, z: number, color: number): THREE.Group {
   return g;
 }
 
-function stripes(a: [number, number], b: [number, number], w: number, seg: number): THREE.Group {
-  const g = group();
-  const dx = b[0] - a[0];
-  const dz = b[1] - a[1];
-  const len = Math.hypot(dx, dz);
-  const ux = dx / len;
-  const uz = dz / len;
-  const ry = Math.atan2(dx, dz);
-  const n = Math.floor(len / seg);
-  for (let i = 0; i < n; i++) {
-    for (let band = 0; band < 4; band++) {
-      const off = (band - 1.5) * (w / 4);
-      const c = Math.sin(i * 0.55 + band * 1.1) > 0 ? PROM_W : PROM_B;
-      const s = (i + 0.5) * seg;
-      const nx = uz;
-      const nz = -ux;
-      g.add(patch(w / 4, seg, c, { x: a[0] + ux * s + nx * off, z: a[1] + uz * s + nz * off, ry, h: 0.05 }));
-    }
-  }
-  return g;
-}
-
 export default function build(): CityScene {
   const rand = rng(2016);
   const anim = new Animator();
   const root = group();
-  root.add(createBase({ top: M.grass, side: mat(0x9a6b45) }));
+  root.add(createBase({ top: GROUND, side: mat(0xb8a587) }));
 
-  // Direction of the Copacabana shoreline and its inland normal.
-  const dirx = 0.753;
-  const dirz = 0.658;
-  const nx = 0.658;
-  const nz = -0.753;
-  const P0: [number, number] = [-9.6, -0.1];
-  const L = 14.6;
-  const along = (t: number, off: number): [number, number] => [P0[0] + dirx * L * t + nx * off, P0[1] + dirz * L * t + nz * off];
+  // --- Copacabana: sea, sand crescent, wave promenade, Avenida Atlântica (z 3.0..4.0). ---
+  // The promenade is a band about 0.9 wide that widens toward both ends; the sand and the sea bow inland in the middle.
+  const SAND_EDGE: [number, number][] = [[-9.8, 5.5], [-8.0, 5.15], [-5.0, 4.95], [0, 4.9], [4.0, 4.95], [7.0, 5.1], [9.8, 5.45]];
+  const WATER_EDGE: [number, number][] = [[-9.8, 6.3], [-8.0, 6.55], [-5.0, 6.95], [-1.0, 7.15], [3.0, 7.3], [6.0, 7.75], [8.0, 8.5], [9.1, 9.8]];
+  const sandZ = curve(SAND_EDGE);
+  const waterZ = curve(WATER_EDGE);
+  promenade ??= promenadeMaterial();
+  root.add(area([[-9.8, 4.0], [9.8, 4.0], ...[...SAND_EDGE].reverse()], promenade, { h: 0.05 }));
+  root.add(area([...SAND_EDGE, [9.8, 9.8], [-9.8, 9.8]], SAND, { h: 0.04 }));
+  root.add(area([...WATER_EDGE, [-9.8, 9.8]], SEA, { h: 0.07 }));
+  root.add(road(-9.8, 3.5, 9.8, 3.5, 1.0));
 
-  // Atlantic sea, sand crescent and the black-and-white promenade.
-  root.add(area([[-9.8, 0.1], [-9.8, 9.8], [1.2, 9.8]], SAND));
-  root.add(area([[-9.8, 3.0], [-7.4, 4.6], [-5.2, 6.2], [-3.6, 8.0], [-2.8, 9.8], [-9.8, 9.8]], waterMat(0x3f9fcf), { h: 0.07 }));
-  root.add(stripes(along(0, 0), along(1, 0), 0.75, 0.32));
-  const avA = along(0, 1.15);
-  const avB = along(1, 1.15);
-  root.add(road(avA[0], avA[1], avB[0], avB[1], 1.0));
+  // --- Central avenue: diagonal from the beach to the foot of the mountains (drawn just above the avenue it meets). ---
+  const AV0: [number, number] = [3.2, 3.2];
+  const AV1: [number, number] = [-2.3, -2.3];
+  const central = road(AV0[0], AV0[1], AV1[0], AV1[1], 1.1);
+  central.position.y = 0.006;
+  root.add(central);
+  root.add(cylinder(0.75, 0.75, 0.05, M.asphalt, { x: AV1[0], z: AV1[1], segments: 16 }));
 
-  // Bay with Sugarloaf.
-  root.add(area([[2.4, -9.8], [9.8, -9.8], [9.8, -1.0], [8, -1.6], [6.2, -2.2], [4.6, -3.4], [3.4, -4.4], [2.8, -6.4], [2.4, -8]], waterMat(0x3f9fcf), { h: 0.07 }));
+  // --- Mountains and the bay behind them. ---
+  root.add(area([[-9.8, -9.8], [-3.4, -9.8], [-3.6, -8.6], [-5.2, -8.0], [-7.4, -7.9], [-9.8, -7.7]], SAND, { h: 0.04 }));
+  root.add(area([[-9.8, -9.8], [-3.8, -9.8], [-4.0, -9.0], [-5.3, -8.45], [-7.4, -8.35], [-9.8, -8.2]], SEA, { h: 0.07 }));
+  root.add(corcovado(rand));
+  // Sugarloaf with its Urca shoulder: baked Rodin massif (forest skirt, bare granite), long axis along the back edge.
+  // Footprint (sampled) x -4.7..3.5, z -9.8..-4.0; summit at (-0.15, 5.38, -7.1).
+  const sugarloaf = shape(SUGARLOAF, [FOREST, GRANITE], { x: -0.6, z: -6.9, ry: Math.PI / 2, height: 5.4 });
+  root.add(sugarloaf, forestCover(sugarloaf, rand, 0.62, 0.9, 3.6));
+  // Cable car as the poster draws it: from Christ's terrace across the saddle to the Sugarloaf summit station. The
+  // rope clears both slopes by at least 0.3 under the cabins (sampled off the bakes).
+  const TOP = { x: -0.15, y: 5.38, z: -7.1 };
+  const toSugar = Math.atan2(TOP.x - SUMMIT.x, TOP.z - SUMMIT.z);
+  const ropeA: [number, number, number] = [SUMMIT.x + Math.sin(toSugar) * 0.5, SUMMIT.y + 0.37, SUMMIT.z + Math.cos(toSugar) * 0.5];
+  const ropeB: [number, number, number] = [TOP.x, TOP.y + 0.7, TOP.z];
+  root.add(box(0.36, 0.42, 0.3, M.white, { x: ropeA[0], y: SUMMIT.y - 0.1, z: ropeA[2], ry: toSugar }));
+  root.add(box(0.46, 0.74, 0.46, M.white, { x: TOP.x, y: TOP.y - 0.12, z: TOP.z, ry: toSugar }));
+  root.add(box(0.56, 0.1, 0.56, M.red, { x: TOP.x, y: TOP.y + 0.62, z: TOP.z, ry: toSugar }));
+  root.add(box(0.3, 0.22, 0.02, windowMaterial, { x: TOP.x - Math.sin(toSugar) * 0.24, y: TOP.y + 0.2, z: TOP.z - Math.cos(toSugar) * 0.24, ry: toSugar }));
+  root.add(cableCar(anim, ropeA, ropeB, 2));
+  // Trees between the end of the avenue and the Sugarloaf skirt.
+  root.add(scatter({ x: -1.7, z: -3.6, w: 0.6, d: 0.6 }, 2, rand, (x, z) => tree({ x, z, kind: 'round', s: 1.0 })));
 
-  // Mountains.
-  root.add(corcovado({ x: -6.4, z: -6.4 }));
-  root.add(sugarloaf({ x: 7.3, z: -6.3, y: 0.04 }));
+  // --- Maracanã, Maracanãzinho and the favela behind them. ---
+  root.add(maracana({ x: 5.55, z: -4.3, ry: 0.1 }));
+  root.add(maracanazinho({ x: 7.8, z: -0.35 }));
+  root.add(favela(rand));
+  root.add(scatter({ x: 2.6, z: -2.0, w: 1.0, d: 1.2 }, 3, rand, (x, z) => tree({ x, z, kind: 'round', s: 0.8 })));
+  root.add(row(4.3, 0.5, 5.9, -0.6, 3, (x, z) => tree({ x, z, kind: 'round', s: 0.7 })));
+  // Street trees along both sides of the central avenue.
+  for (const s of [-2, -1, 0, 1, 2]) {
+    root.add(tree({ x: s - 0.62, z: s + 0.62, kind: 'round', s: 0.6 }));
+    root.add(tree({ x: s + 0.62, z: s - 0.62, kind: 'round', s: 0.6 }));
+  }
 
-  // Cable car: base station, Urca shoulder, Sugarloaf summit. Heights were sampled from the baked
-  // terrain so the cabins clear it; a pylon holds the rope where the first span climbs steeply.
-  root.add(box(0.5, 1.1, 0.5, M.white, { x: 6.9, z: -3.5 }));
-  root.add(box(0.7, 0.12, 0.6, M.red, { x: 6.9, z: -3.5, y: 1.1 }));
-  root.add(box(0.5, 1.1, 0.5, M.white, { x: 7.1, z: -4.6, y: 2.85 }));
-  root.add(box(0.5, 0.8, 0.5, M.red, { x: 7.3, z: -6.3, y: 4.25 }));
-  // Glazed station fronts, lit at night.
-  root.add(box(0.36, 0.3, 0.02, windowMaterial, { x: 6.9, z: -3.24, y: 0.6 }));
-  root.add(box(0.36, 0.3, 0.02, windowMaterial, { x: 7.1, z: -4.34, y: 3.45 }));
-  root.add(box(0.07, 1.5, 0.07, M.steel, { x: 7.16, z: -3.96, y: 1.1 }));
-  root.add(box(0.22, 0.05, 0.05, M.steel, { x: 7.07, z: -3.96, y: 2.5 }));
-  root.add(cableCar(anim, [6.9, 1.4, -3.5], [7.1, 4.0, -4.6], 2));
-  root.add(cableCar(anim, [7.1, 4.0, -4.6], [7.3, 5.2, -6.3], 2));
-
-  // Favela hillside beside Corcovado.
-  root.add(favelaHill({ x: -0.9, z: -7.2 }, rand));
-
-  // Maracanã.
-  root.add(maracana({ x: 1.6, z: -1.6, ry: 0.35 }));
-
-  // Streets across the middle.
-  root.add(road(-6.4, 1.6, 9.5, 1.6, 1.0));
-  root.add(road(-1.0, 1.6, -1.0, -3.0, 0.8, { lines: false }));
-  root.add(road(2.4, 1.6, 2.4, -0.2, 0.8, { lines: false }));
-
-  // Copacabana apartment blocks facing the avenue: balconies, shopfronts, varied roofs.
-  const faceRy = Math.atan2(-nx, -nz);
+  // --- Apartment blocks: a wall along Avenida Atlântica (fronts at z 2.2), more along the central avenue. ---
+  const apartment = (x: number, z: number, w: number, d: number, h: number, i: number, shopColor?: number) => {
+    root.add(building({
+      x, z, w, d, h, wall: mat(FACADES[i % FACADES.length]), windows: 'grid', floorH: 0.42,
+      shop: shopColor,
+    }));
+  };
   const AWN = [0xe8503a, 0xf2b630, 0x3aa0d8, 0x62b94e, 0xe66fa8];
   for (let i = 0; i < 7; i++) {
-    const t = 0.1 + i * 0.12;
-    const [x, z] = along(t, 2.55 + (i % 2) * 0.25);
-    const h = 1.5 + ((i * 5) % 7) * 0.2 + rand() * 0.4;
-    const w = 0.95 + (i % 3) * 0.12;
-    const b = building({
-      w, d: 1.1, h, x, z, ry: faceRy, wall: mat(PASTEL[i % PASTEL.length]), windows: 'grid',
-      roof: i % 3 === 2 ? 'gable' : 'flat', roofMat: M.terracotta, shop: AWN[i % AWN.length],
-    });
-    for (let f = 1; f < Math.floor(h / 0.55); f++) {
-      b.add(box(w * 0.7, 0.05, 0.14, M.white, { y: 0.35 + f * 0.55, z: 0.62 }));
-      b.add(box(w * 0.7, 0.14, 0.02, M.dark, { y: 0.47 + f * 0.55, z: 0.69 }));
-    }
-    root.add(b);
+    const x = -9.05 + i * 1.3;
+    apartment(x, 1.6, 1.15, 1.2, 2.7 + ((i * 5) % 4) * 0.3 + rand() * 0.3, i, AWN[i % AWN.length]);
   }
-  root.add(building({ w: 1.2, d: 1.2, h: 2.6, x: -2.8, z: -0.2, wall: mat(0xe9c9a8), windows: 'grid', shop: 0xf2b630 }));
-  root.add(building({ w: 1.3, d: 1.0, h: 1.9, x: -4.8, z: -1.6, wall: mat(0xdbe4f0), windows: 'grid', roof: 'gable', roofMat: M.terracotta }));
-  root.add(building({ w: 1.2, d: 1.2, h: 1.7, x: 4.6, z: 0.1, wall: mat(0xf0d1d1), windows: 'grid', shop: 0x3aa0d8 }));
-  root.add(building({ w: 1.0, d: 1.4, h: 1.4, x: 8.2, z: 0.0, wall: mat(0xf1e3c4), windows: 'grid', roof: 'gable', roofMat: M.terracotta }));
-  root.add(building({ w: 1.4, d: 1.0, h: 1.3, x: 8.4, z: 3.4, wall: mat(0xf4efe0), windows: 'grid', roof: 'gable', roofMat: M.terracotta }));
+  // Right of the avenue: blocks step down toward the corner and leave a gap of trees in front of the Maracanãzinho,
+  // so its dome shows as in the poster.
+  const RIGHT: [number, number][] = [[4.0, 2.7], [5.3, 2.3], [9.15, 1.9]];
+  RIGHT.forEach(([x, h], i) => apartment(x, 1.6, 1.15, 1.2, h, i + 3, AWN[(i + 2) % AWN.length]));
+  root.add(row(6.5, 1.75, 8.2, 1.75, 3, (x, z) => tree({ x, z, kind: 'round', s: 0.65 })));
+  apartment(-2.7, -0.4, 1.1, 1.0, 3.4, 1);
+  apartment(-3.7, 0.45, 1.0, 0.9, 3.4, 6);
+  apartment(0.9, -1.5, 1.1, 1.1, 4.0, 5);
+  apartment(2.7, -0.2, 1.1, 1.0, 3.2, 7);
+  apartment(-0.7, -3.4, 1.0, 1.0, 3.4, 2);
+  apartment(1.5, -3.1, 1.0, 1.0, 3.0, 4);
 
-  // Selarón steps.
-  root.add(selaron({ x: 5.6, z: 5.6, y: 0 }));
+  // --- Beach life. ---
+  // Palms on the building side of the avenue, lamps on the promenade edge.
+  root.add(row(-9.4, 2.65, -1.2, 2.65, 8, (x, z) => tree({ x, z, kind: 'palm', s: 0.75 })));
+  root.add(row(3.9, 2.65, 9.4, 2.65, 5, (x, z) => tree({ x, z, kind: 'palm', s: 0.75 })));
+  root.add(row(-9.2, 4.15, 9.2, 4.15, 10, (x, z) => lamp({ x, y: 0.05, z })));
+  // Palms where the promenade widens at the left end.
+  root.add(row(-9.4, 4.5, -8.6, 4.4, 2, (x, z) => tree({ x, z, kind: 'palm', s: 0.8 })));
 
-  // Park with a football pitch in the front corner.
-  root.add(patch(3.4, 2.2, mat(0xa6d36f), { x: 7.0, z: 8.0, h: 0.05 }));
-  root.add(patch(3.0, 0.05, M.white, { x: 7.0, z: 8.0, h: 0.07 }));
-  root.add(patch(3.0, 1.8, mat(0x7cc25a), { x: 7.0, z: 8.0, h: 0.06 }));
-  root.add(patch(0.05, 1.8, M.white, { x: 7.0, z: 8.0, h: 0.08 }));
-  root.add(scatter({ x: 6.8, z: 5.0, w: 5.0, d: 1.6 }, 7, rand, (x, z) => tree({ x, z, kind: 'palm', s: 0.9 })));
-  root.add(scatter({ x: 3.0, z: 6.5, w: 3.0, d: 4.0 }, 7, rand, (x, z) => tree({ x, z, kind: rand() > 0.5 ? 'round' : 'palm', s: 0.85 })));
-  // Pitch players stand on the grass inside the white lines (top 0.06), off the centre lines.
-  const prand = rng(7016);
-  const onLine = (x: number, z: number) => Math.abs(x - 7.0) < 0.08 || Math.abs(z - 8.0) < 0.07;
-  for (let i = 0; i < 4; i++) {
-    let x = 5.5 + rand() * 3.0;
-    let z = 7.2 + rand() * 1.6;
-    while (onLine(x, z)) {
-      x = 5.5 + prand() * 3.0;
-      z = 7.2 + prand() * 1.6;
-    }
-    root.add(person({ x, y: 0.06, z, color: KITS[i % KITS.length] }));
-  }
-
-  // Beach: palm row, umbrellas, towels and people.
-  root.add(row(...along(0.08, -0.5), ...along(0.9, -0.5), 9, (x, z) => tree({ x, z, kind: 'palm', s: 0.8 })));
+  // Dry sand: between the sand edge (+0.25) and 0.45 short of the waterline.
+  const onSand = (x: number, z: number) => x > -9.5 && x < 9.6 && z < 9.6 && z > sandZ(x) + 0.25 && (x > 9.1 || z < waterZ(x) - 0.45);
   const umbs: [number, number][] = [];
-  for (let i = 0; i < 16; i++) {
-    const [x, z] = along(0.1 + rand() * 0.75, -(0.9 + rand() * 0.8));
-    root.add(umbrella(x, z, UMBRELLAS[i % UMBRELLAS.length]));
-    umbs.push([x, z]);
-  }
-  // Dry sand only: seaward of the promenade edge and 0.45 clear of the waterline.
-  const onSand = (x: number, z: number) => {
-    const off = (x - P0[0]) * nx + (z - P0[1]) * nz;
-    if (off > -0.5 || x < -9.5 || z > 9.5) return false;
-    const S: [number, number][] = [[-9.8, 3.0], [-7.4, 4.6], [-5.2, 6.2], [-3.6, 8.0], [-2.8, 9.8]];
-    for (let k = 0; k < S.length - 1; k++) {
-      const [x0, z0] = S[k];
-      const [x1, z1] = S[k + 1];
-      if (x >= x0 && x <= x1) return z < z0 + ((x - x0) / (x1 - x0)) * (z1 - z0) - 0.45;
-    }
-    return false;
-  };
-  // Obstacles on the sand: umbrella poles, floodlight masts and the palm row.
-  const poles: [number, number][] = [...umbs, ...[0.13, 0.33, 0.53, 0.73].map((t) => along(t, -0.55))];
-  for (let i = 0; i < 9; i++) poles.push(along(0.08 + (0.82 * i) / 8, -0.5));
-  const beachGoers: [number, number][] = [];
-  const clearBeach = (x: number, z: number, own?: [number, number]) =>
-    onSand(x, z) &&
-    poles.every((p) => p === own || Math.hypot(x - p[0], z - p[1]) > 0.3) &&
-    beachGoers.every(([ox, oz]) => Math.hypot(x - ox, z - oz) > 0.18);
-  const addBeachGoer = (x: number, z: number, i: number, face = false) => {
-    beachGoers.push([x, z]);
-    root.add(person({ x, y: 0.04, z, color: BEACHWEAR[i % BEACHWEAR.length], ry: face ? faceRy : undefined }));
-  };
-  // One person beside every other umbrella: first free spot on a ring around the pole, facing the sea.
-  const ring: [number, number][] = [[0.34, 0.1], [-0.34, 0.1], [0.3, -0.25], [-0.3, -0.25], [0.0, 0.45], [0.0, -0.4]];
-  for (let i = 0; i < 16; i += 2) {
-    const spot = ring.map(([dx, dz]): [number, number] => [umbs[i][0] + dx, umbs[i][1] + dz]).find(([x, z]) => clearBeach(x, z, umbs[i]));
-    if (spot) addBeachGoer(spot[0], spot[1], i / 2, true);
-  }
-  // Loose beachgoers (drawn as before, then nudged inland until they stand on dry sand).
-  for (let i = 0; i < 6; i++) {
-    let [x, z] = along(0.15 + rand() * 0.7, -(1.9 + rand() * 0.5));
-    for (let k = 0; k < 20 && !clearBeach(x, z); k++) {
-      x += nx * 0.12;
-      z += nz * 0.12;
-    }
-    if (clearBeach(x, z)) addBeachGoer(x, z, i + 3);
-  }
-  // A few more strollers and sunbathers on the sand.
-  for (let i = 0; i < 8; i++) {
-    for (let k = 0; k < 12; k++) {
-      const [x, z] = along(0.12 + prand() * 0.75, -(0.7 + prand() * 1.5));
-      if (clearBeach(x, z)) {
-        addBeachGoer(x, z, i + 1);
+  for (let i = 0; i < 18; i++) {
+    for (let k = 0; k < 10; k++) {
+      const x = -9.2 + rand() * 18.4;
+      const z = sandZ(x) + 0.5 + rand() * (waterZ(x) - sandZ(x) - 1.0);
+      if (onSand(x, z) && umbs.every(([ux, uz]) => Math.hypot(x - ux, z - uz) > 0.6)) {
+        root.add(umbrella(x, z, UMBRELLAS[i % UMBRELLAS.length]));
+        umbs.push([x, z]);
         break;
       }
     }
   }
-  // Walkers on the wave promenade (top 0.05): closed loops out and back along the two lanes, clear of
-  // the lamp row (offset 0.6) and the avenue (offset >= 0.65).
+  const beachGoers: [number, number][] = [];
+  const clearBeach = (x: number, z: number) =>
+    onSand(x, z) && umbs.every(([ux, uz]) => Math.hypot(x - ux, z - uz) > 0.3) && beachGoers.every(([ox, oz]) => Math.hypot(x - ox, z - oz) > 0.18);
+  const prand = rng(7016);
+  for (let i = 0; i < 26; i++) {
+    for (let k = 0; k < 12; k++) {
+      const x = -9.4 + prand() * 18.8;
+      const z = sandZ(x) + prand() * (waterZ(x) - sandZ(x));
+      if (clearBeach(x, z)) {
+        beachGoers.push([x, z]);
+        root.add(person({ x, y: 0.04, z, color: BEACHWEAR[i % BEACHWEAR.length] }));
+        break;
+      }
+    }
+  }
+  // Walkers on the promenade (top 0.05): closed loops along it, clear of the lamp row (z 4.15).
   const WALK: [number, number, number, number][] = [
-    [0.06, 0.34, 0.16, 0.0], [0.2, 0.5, 0.15, 0.4], [0.4, 0.7, 0.16, 0.7],
-    [0.55, 0.9, 0.15, 0.15], [0.12, 0.62, 0.14, 0.55], [0.46, 0.94, 0.15, 0.85],
+    [-8.0, -3.0, 4.4, 0.0], [-5.0, 0.5, 4.65, 0.4], [-1.0, 4.5, 4.4, 0.7],
+    [2.0, 8.0, 4.65, 0.15], [-6.5, 1.0, 4.65, 0.55], [3.0, 8.5, 4.4, 0.85],
   ];
-  WALK.forEach(([a, b, o, ph], i) => {
-    const loop = [along(a, o), along(b, o), along(b, -o), along(a, -o)];
+  WALK.forEach(([a, b, z, ph], i) => {
+    const loop: [number, number][] = [[a, z - 0.12], [b, z - 0.12], [b, z + 0.12], [a, z + 0.12]];
     root.add(anim.follow(person({ y: 0.05, color: BEACHWEAR[(i * 3 + 1) % BEACHWEAR.length] }), loop, 0.3 + (i % 3) * 0.05, ph, true));
   });
-  // Street lamps along the promenade.
-  root.add(row(...along(0.05, 0.6), ...along(0.95, 0.6), 8, (x, z) => lamp({ x, z })));
-  // Floodlight masts on the sand, between the palms.
-  for (const t of [0.13, 0.33, 0.53, 0.73]) {
-    const [x, z] = along(t, -0.55);
-    root.add(cylinder(0.02, 0.03, 1.2, M.dark, { x, z, segments: 5 }));
-    root.add(box(0.18, 0.06, 0.08, lampMaterial, { x, z, y: 1.2, ry: faceRy }));
-  }
 
-  // Trees around the favela hill and stadium.
-  root.add(scatter({ x: -3.4, z: -3.0, w: 1.4, d: 3.0 }, 4, rand, (x, z) => tree({ x, z, kind: 'round', s: 0.9 })));
-  root.add(scatter({ x: 2.0, z: -4.5, w: 1.6, d: 0.6 }, 3, rand, (x, z) => tree({ x, z, kind: 'palm', s: 0.9 })));
-
-  root.add(crosswalk(0.7, 1.6, 1.0, { ry: Math.PI / 2 }));
-  root.add(crosswalk(-1.0, 0.5, 0.8, { ry: 0 }));
-  // Traffic on the avenue and the cross street.
+  // --- Traffic. ---
+  root.add(crosswalk(1.0, 3.5, 1.0, { ry: Math.PI / 2 }));
+  root.add(crosswalk(-6.0, 3.5, 1.0, { ry: Math.PI / 2 }));
+  for (let i = 0; i < 5; i++) root.add(anim.follow(car({ y: 0.05, taxi: i === 2 }), [[-9.6, 3.25], [9.6, 3.25]], 1.2, i / 5));
+  for (let i = 0; i < 4; i++) root.add(anim.follow(car({ y: 0.05, taxi: i === 1 }), [[9.6, 3.75], [-9.6, 3.75]], 1.2, i / 4 + 0.1));
   const lane = (off: number, rev: boolean): [number, number][] => {
-    const a = along(0, 1.15 + off);
-    const b = along(1, 1.15 + off);
+    const a: [number, number] = [AV0[0] - 0.8 + off * Math.SQRT1_2, AV0[1] - 0.8 - off * Math.SQRT1_2];
+    const b: [number, number] = [AV1[0] + 0.3 + off * Math.SQRT1_2, AV1[1] + 0.3 - off * Math.SQRT1_2];
     return rev ? [b, a] : [a, b];
   };
-  for (let i = 0; i < 4; i++) root.add(anim.follow(car({ y: 0.05 }), lane(-0.22, false), 1.2, i / 4));
-  for (let i = 0; i < 3; i++) root.add(anim.follow(car({ y: 0.05 }), lane(0.22, true), 1.2, i / 3 + 0.1));
-  for (let i = 0; i < 3; i++) root.add(anim.follow(car({ y: 0.05 }), [[-6.0, 1.35], [9.6, 1.35]], 1.3, i / 3));
-  for (let i = 0; i < 3; i++) root.add(anim.follow(car({ y: 0.05 }), [[9.6, 1.85], [-6.0, 1.85]], 1.3, i / 3 + 0.2));
+  for (let i = 0; i < 3; i++) root.add(anim.follow(car({ y: 0.056 }), lane(0.25, false), 1.0, i / 3));
+  for (let i = 0; i < 3; i++) root.add(anim.follow(car({ y: 0.056, taxi: i === 0 }), lane(-0.25, true), 1.0, i / 3 + 0.15));
 
-  // Boats: sea and bay.
+  // --- Boats: sea and bay. ---
   const boats: [number, number, number, number][] = [
-    [-7.4, 7.2, 0xe8503a, 0.5], [-5.2, 8.7, 0xf2b630, 1.8], [-8.6, 5.4, 0x3aa0d8, 3.0],
-    [9.2, -2.2, 0xe8503a, 1.0], [3.8, -5.8, 0xf4f1ea, 2.2], [3.5, -8.4, 0x3aa0d8, 0.2],
+    [-5.4, 9.0, 0xe8503a, 0.5], [-1.0, 8.8, 0xf2b630, 1.8], [4.6, 8.9, 0x3aa0d8, 3.0],
+    [-8.4, -8.6, 0xf4f1ea, 0.9], [-7.0, -9.2, 0xe8503a, 2.2],
   ];
   for (const [x, z, color, ry] of boats) {
     root.add(anim.bob(boat({ x, z, y: 0.07, ry, color, len: 0.7 }), 0.025, 1.3));

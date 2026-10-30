@@ -28,7 +28,7 @@ type PackKind = 'car' | 'taxi' | 'bikes';
 
 const CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
 
-const ASPHALT = mat(0x8e8a89, { roughness: 0.95 });
+const ASPHALT = mat(0x8e8a89, { roughness: 0.95, surface: 'road' });
 const PLAZA = mat(0xe3ddcf);
 const CURB = mat(0xf2efe7);
 const LAWN = mat(0x9cc35b);

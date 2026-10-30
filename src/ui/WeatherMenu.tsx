@@ -16,13 +16,10 @@ const GROUPS: { id: WeatherGroup; label: string; options: [value: string, label:
     options: [
       ['current', 'Current'],
       ['clear', 'Clear'],
-      ['partly', 'Partly cloudy'],
       ['cloudy', 'Overcast'],
       ['fog', 'Fog'],
-      ['drizzle', 'Drizzle'],
       ['rain', 'Rain'],
       ['snow', 'Snow'],
-      ['storm', 'Storm'],
     ],
   },
   {

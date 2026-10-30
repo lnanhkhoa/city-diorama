@@ -18,13 +18,10 @@ const MOON = svg('<path d="M31 9a14 14 0 1 0 8 23A12 12 0 0 1 31 9z"/>');
 
 const ICONS: Record<WeatherKind, string> = {
   clear: SUN,
-  partly: svg('<circle cx="17" cy="16" r="6"/><path d="M17 4v2M6.5 9.5l1.4 1.4M5 16h2M27.5 9.5l-1.4 1.4"/><path d="M16 38h19a7 7 0 0 0 0-14 10 10 0 0 0-19 3 5.5 5.5 0 0 0 0 11z"/>'),
   cloudy: svg(CLOUD),
   fog: svg('<path d="M14 26h21a8 8 0 0 0 0-16 11 11 0 0 0-21 3 6.5 6.5 0 0 0 0 13z"/><path d="M9 33h30M13 39h22"/>'),
-  drizzle: svg(`${CLOUD}<path d="M18 39v2M25 39v2M32 39v2"/>`),
   rain: svg(`${CLOUD}<path d="M17 38l-2 5M24 38l-2 5M31 38l-2 5"/>`),
   snow: svg('<path d="M24 4v40M6.7 14l34.6 20M6.7 34l34.6-20"/><path d="M19 7l5 4 5-4M19 41l5-4 5 4M7 21l6-1-2-6M41 27l-6 1 2 6M7 27l6 1-2 6M41 21l-6-1 2-6"/>'),
-  storm: svg(`${CLOUD}<path d="M25 36l-4 6h6l-4 6"/>`),
 };
 
 export function weatherIcon(kind: WeatherKind, daytime: Daytime): string {

@@ -4,11 +4,19 @@ Source: `src/cities/list/rio-de-janeiro.ts`. Part of the [city improvements](REA
 
 ## Status
 
-- **Budget now:** 54,452 tris, 179 draws (limits 200,000 / 300), measured 2026-10-23 after the kit tree rework.
+- **Budget now:** 136,144 tris, 181 draws (limits 200,000 / 300), measured 2026-10-26 after the second poster pass. The canopy trees on the two massifs take about 70k.
 - **Fixed 2026-10-21:** Visible bay with boats; cable car clears the rock; pitch lines. Night lighting: Christ floodlit (`floodMat`), lit favela windows, Maracanã floodlights and lit pitch, lit cable-car cabins and stations, floodlight masts on the beach.
 - **Left open by the fix:** the Sugarloaf is smaller (height 4.4) and sits in the back-right corner. The boat at (3.8, -5.8) is close to the rock.
 - **Fixed 2026-10-22:** `corcovado()` is the Rodin shape `corcovado` (3,000 tris, parts rainforest + granite) at (-6.4, -6.4), height 6.4, turned π/4 so its sheer cliff faces the camera. Christ stands on a two-tier terrace (promenade-white ring, floodlit stone step) placed on the summit plateau measured off the bake. Christ's top is now at about 8.9 (was 10.9). The 28 random canopy spheres are gone, so later `rand()` placements (favela colours, beach umbrellas) shifted.
-- **Next:** the missing items below (favela strip on the right edge, Copacabana Palace, street life).
+- **Reworked 2026-10-26 from `assets/rio-de-janeiro.jpeg`:** positions read off the poster through a homography fitted to its plinth corners (the hidden back corner predicted from the app camera), as for Hanoi and Ho Chi Minh City. Everything before this line describes the old layout.
+  - **Copacabana** runs the whole front (z = +10) edge: sea and sand crescent bowing inland, the black-and-white wave promenade (a code-drawn texture on one `area`, one draw call), Avenida Atlântica at z 3.5 with taxis, palms and lamps, and a wall of 7 + 5 apartment blocks in the poster's greys, sands and salmon.
+  - **Central avenue** runs diagonally from the beach to the foot of the mountains, flanked by taller blocks; it shows on screen as the poster's vertical street.
+  - **Corcovado** (height 6.3, `xzScale` 1.2, at (-5.9, -3.8)) is turned so its forest flank faces the camera and the cliff the bay. **Sugarloaf** (height 5.4) sits at (-0.6, -6.9) right of the avenue; footprints and summits were sampled off the bakes. A small bay with two boats sits behind them in the back corner.
+  - **Cable car** runs as the poster draws it, from Christ's terrace to the Sugarloaf summit station (cabins clear both slopes by ≥ 0.3).
+  - **Maracanã** is larger (roof 3.15 × 2.8, 44 roof ribs, glazed concourse band) beside the new **Maracanãzinho** dome; the **favela** climbs terraces along the back-right and right edges.
+  - **Removed** (not in the poster): Selarón steps, the corner football pitch, the conical favela hill, the green lawn ground (now light paving).
+- **Second poster pass 2026-10-26:** the promenade is a narrow band (about 0.9) with finer, thinner waves, and the sand and sea are wider. `forestCover()` casts rays onto each bake and plants kit round trees on its forest part (between y 0.3 and a cap below the rock), so both mountains read as leafy rainforest; forest and granite colours are darker, as in the poster. Street trees line the central avenue. The blocks right of the avenue step down and leave a gap of trees, so the Maracanãzinho dome shows. Favela houses are larger, sized to their terraces, with concrete or clay roofs.
+- **Next:** the Rodin Corcovado is still a rock tower under its forest; a re-bake as a broad forested massif would match the poster better. Copacabana Palace, kiosks on the promenade.
 
 ## Audit
 

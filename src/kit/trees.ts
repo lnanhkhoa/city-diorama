@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { group, rng, type Place } from './primitives';
+import { patchSurface } from './surface';
 
 // Trees are the one kit prop with textures. They are drawn here in code into
 // DataTextures (no image files, no canvas, so builds also run under Node):
@@ -111,11 +112,16 @@ function barkTexture(): THREE.DataTexture {
 let materials: { canopy: THREE.MeshStandardMaterial; frond: THREE.MeshStandardMaterial; bark: THREE.MeshStandardMaterial } | null = null;
 
 function treeMaterials() {
-  materials ??= {
-    canopy: new THREE.MeshStandardMaterial({ map: canopyTexture(), vertexColors: true, roughness: 0.82 }),
-    frond: new THREE.MeshStandardMaterial({ map: frondTexture(), vertexColors: true, roughness: 0.7 }),
-    bark: new THREE.MeshStandardMaterial({ map: barkTexture(), vertexColors: true, roughness: 0.95 }),
-  };
+  if (!materials) {
+    materials = {
+      canopy: new THREE.MeshStandardMaterial({ map: canopyTexture(), vertexColors: true, roughness: 0.82 }),
+      frond: new THREE.MeshStandardMaterial({ map: frondTexture(), vertexColors: true, roughness: 0.7 }),
+      bark: new THREE.MeshStandardMaterial({ map: barkTexture(), vertexColors: true, roughness: 0.95 }),
+    };
+    // Crowns catch snow and rain; bark (mostly vertical) stays as it is.
+    patchSurface(materials.canopy, 'ground');
+    patchSurface(materials.frond, 'ground');
+  }
   return materials;
 }
 

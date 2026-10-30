@@ -34,7 +34,7 @@ function tokyoite(x: number, z: number, i: number, ry?: number, wet = false) {
   return person({ x, y: 0.04, z, ry, color: col, umbrella: wet ? BROLLIES[i % BROLLIES.length] : undefined });
 }
 const WALLS = [0xe8e2dc, 0xcfd6dd, 0xd9c9c0, 0xb8c4cf, 0xe6d9d0, 0xdcdad2, 0xc3ccd6];
-const ROAD = mat(0x464b53, { roughness: 0.95 });
+const ROAD = mat(0x464b53, { roughness: 0.95, surface: 'road' });
 
 type Mat = THREE.Material;
 
@@ -719,11 +719,13 @@ function scrambleCrowd(anim: Animator, rand: () => number, n: number): THREE.Gro
     m.updateMatrix();
     return m.geometry.clone().applyMatrix4(m.matrix);
   }))!;
+  // People stay snow-free (no white heads), so the crowd uses its own unpatched materials.
+  const none = { surface: 'none' } as const;
   const parts = [
-    new THREE.InstancedMesh(bake([-1, 1].map((sx) => cylinder(0.011, 0.013, 0.085, M.dark, { x: sx * 0.015, segments: 4, ry: Math.PI / 4 }))), M.dark, n),
-    new THREE.InstancedMesh(bake([cylinder(0.03, 0.04, 0.1, M.white, { y: 0.08, segments: 6 }), ...[-1, 1].map((sx) => cylinder(0.01, 0.011, 0.075, M.white, { x: sx * 0.038, y: 0.1, segments: 4, ry: Math.PI / 4 }))]), M.white, n),
-    new THREE.InstancedMesh(bake([sphere(0.024, M.white, { y: 0.18, segments: 6 })]), mat(0xe2b48e), n),
-    new THREE.InstancedMesh(bake([sphere(0.02, M.white, { y: 0.195, segments: 6 })]), mat(0x2a211c), n),
+    new THREE.InstancedMesh(bake([-1, 1].map((sx) => cylinder(0.011, 0.013, 0.085, M.dark, { x: sx * 0.015, segments: 4, ry: Math.PI / 4 }))), mat(0x2e3238, none), n),
+    new THREE.InstancedMesh(bake([cylinder(0.03, 0.04, 0.1, M.white, { y: 0.08, segments: 6 }), ...[-1, 1].map((sx) => cylinder(0.01, 0.011, 0.075, M.white, { x: sx * 0.038, y: 0.1, segments: 4, ry: Math.PI / 4 }))]), mat(0xf7f6f2, none), n),
+    new THREE.InstancedMesh(bake([sphere(0.024, M.white, { y: 0.18, segments: 6 })]), mat(0xe2b48e, none), n),
+    new THREE.InstancedMesh(bake([sphere(0.02, M.white, { y: 0.195, segments: 6 })]), mat(0x2a211c, none), n),
   ];
   const coat = new THREE.Color();
   for (const m of parts) {

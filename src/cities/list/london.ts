@@ -429,7 +429,7 @@ export default function build(): CityScene {
   root.add(patch(5.2, 1.6, M.grass, { x: -6.6, z: 6.6, h: 0.03 }));
 
   // Roads: embankments and two crossings.
-  const RD = mat(0x575d66, { roughness: 0.95 });
+  const RD = mat(0x575d66, { roughness: 0.95, surface: 'road' });
   root.add(road(-10, -2.3, 10, -2.3, 0.6, { material: RD }));
   root.add(road(-10, 3.5, 10, 3.5, 0.6, { material: RD }));
   root.add(road(0.2, -10, 0.2, 10, 0.9, { material: RD }));

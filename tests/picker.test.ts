@@ -45,17 +45,19 @@ describe('matchCities', () => {
 describe('fetchWeatherMany', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  const current = (code: number, t: number, day = 1, time?: string) => ({ current: { time, temperature_2m: t, weather_code: code, is_day: day } });
+  const current = (code: number, t: number, day = 1, time?: string, snow?: number | null) => ({
+    current: { time, temperature_2m: t, weather_code: code, is_day: day, snow_depth: snow },
+  });
   const respond = (body: unknown) => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body))));
 
   it('sends every place in one request and keeps input order', async () => {
-    respond([current(0, 21), current(61, 9, 0)]);
+    respond([current(0, 21), current(73, -3, 0, undefined, 0.12)]);
     const w = await fetchWeatherMany([{ lat: 1, lon: 2 }, { lat: 3, lon: 4 }]);
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
     expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('latitude=1,3&longitude=2,4');
     expect(w).toEqual([
-      { kind: 'clear', tempC: 21, daytime: 'day', live: true },
-      { kind: 'rain', tempC: 9, daytime: 'night', live: true },
+      { kind: 'clear', tempC: 21, daytime: 'day', live: true, snowDepthM: 0 },
+      { kind: 'snow', tempC: -3, daytime: 'night', live: true, snowDepthM: 0.12 },
     ]);
   });
 
@@ -66,13 +68,13 @@ describe('fetchWeatherMany', () => {
   });
 
   it('accepts the single-object response the API returns for one place', async () => {
-    respond(current(3, 12));
-    expect(await fetchWeatherMany([{ lat: 1, lon: 2 }])).toEqual([{ kind: 'cloudy', tempC: 12, daytime: 'day', live: true }]);
+    respond(current(3, 12, 1, undefined, null));
+    expect(await fetchWeatherMany([{ lat: 1, lon: 2 }])).toEqual([{ kind: 'cloudy', tempC: 12, daytime: 'day', live: true, snowDepthM: 0 }]);
   });
 
   it('marks places without usable data as null and rejects a mismatched count', async () => {
     respond([current(0, 20), {}]);
-    expect(await fetchWeatherMany([{ lat: 1, lon: 2 }, { lat: 3, lon: 4 }])).toEqual([{ kind: 'clear', tempC: 20, daytime: 'day', live: true }, null]);
+    expect(await fetchWeatherMany([{ lat: 1, lon: 2 }, { lat: 3, lon: 4 }])).toEqual([{ kind: 'clear', tempC: 20, daytime: 'day', live: true, snowDepthM: 0 }, null]);
     respond([current(0, 20)]);
     await expect(fetchWeatherMany([{ lat: 1, lon: 2 }, { lat: 3, lon: 4 }])).rejects.toThrow(/expected 2/);
   });

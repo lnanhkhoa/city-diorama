@@ -136,7 +136,7 @@ export function CityPicker({ open, onClose, cities, current, weatherOf }: Props)
       <ul ref={list} id="city-list" aria-label="Cities" onKeyDown={onListKey}>
         {hits.map((c, i) => {
           const w = weatherOf(c);
-          const theme = themeFor(c, w.daytime);
+          const theme = themeFor(c, w.daytime, w.kind);
           const time = formatLocalTime(c.timezone, now);
           const temp = `${Math.round(w.tempC)}°`;
           const label = `${WEATHER_LABEL[w.kind]}${w.live ? '' : ' (typical)'}`;

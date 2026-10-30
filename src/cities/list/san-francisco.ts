@@ -407,7 +407,7 @@ export default function build(): CityScene {
   root.add(patch(19.0, 0.18, mat(0xe9d3a3), { z: 4.45, h: 0.12 }));
 
   // Streets.
-  const asphalt = mat(0x59606a, { roughness: 0.95 });
+  const asphalt = mat(0x59606a, { roughness: 0.95, surface: 'road' });
   root.add(road(-9.5, 3.4, 9.5, 3.4, 0.9, { material: asphalt }));
   root.add(road(-0.6, -9.5, -0.6, 3.0, 0.9, { material: asphalt }));
   root.add(road(-9.5, -1.8, -0.6, -1.8, 0.8, { material: asphalt }));

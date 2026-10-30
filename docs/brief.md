@@ -14,8 +14,11 @@ weather icon, local date, temperature). Visual reference: the `assets/` posters.
   theirs in code). One module per city.
 - Orbit / zoom with mouse and touch, idle auto-rotate, animated traffic/boats.
 - Live weather from Open-Meteo (no API key). Falls back to a per-city default
-  when offline. Weather drives particles (rain, snow), light, and day/night
-  (lit windows at night).
+  when offline. Five kinds (clear, overcast, fog, rain, snow) drive particles
+  (rain, snow), light, depth fog, the page background by day and the city's
+  surfaces: snow cover (also from live snow depth), wet ground with puddles,
+  frozen water. Tropical and desert cities (`CityDef.snow: false`) never show
+  snow. Day/night lights windows at night.
 - Navigation: prev/next buttons, keyboard arrows, city menu, `#/<slug>` deep links.
 - Share (Web Share API, else copy link) and Save (PNG of the current view).
 
@@ -30,7 +33,8 @@ weather icon, local date, temperature). Visual reference: the `assets/` posters.
 1. `bun run dev` serves the app; every city renders with no console errors.
 2. `#/<slug>` loads that city; unknown slug falls back to the first city.
 3. Overlay shows city name, weather icon, local date in the city timezone, °C.
-4. Rain/snow particles appear for rain/snow weather codes; night lights windows.
+4. Rain/snow particles appear for rain/snow weather codes, and snow, wet ground
+   and ice show on the surfaces; night lights windows.
 5. Save downloads a PNG; Share shares or copies the link.
 6. `bun run test`, `bun run typecheck`, `bun run build` pass.
 

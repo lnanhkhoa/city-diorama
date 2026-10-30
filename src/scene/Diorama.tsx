@@ -5,9 +5,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CityBuild } from '../cities/types';
 import type { Daytime } from '../weather/api';
 import type { WeatherKind } from '../weather/codes';
+import type { Surface } from '../weather/surface';
 import { Atmosphere } from './Atmosphere';
 import { CityStage, type ShowMode } from './city-stage';
-import { TARGET, VIEW_DIR } from './lighting';
+import { AO_BLEND, TARGET, VIEW_DIR } from './lighting';
 import { createComposer, type PostChain } from './passes';
 import { ResolutionGovernor } from './resolution';
 
@@ -40,6 +41,8 @@ interface Props {
   mode: ShowMode;
   kind: WeatherKind;
   daytime: Daytime;
+  /** Weather on the city's surfaces (snow, wet, ice, fog). */
+  surface: Surface;
   handle: Ref<DioramaHandle>;
 }
 
@@ -70,7 +73,7 @@ interface SceneProps extends Props {
   onDpr: (ratio: number) => void;
 }
 
-function DioramaScene({ build, mode, kind, daytime, handle, reducedMotion, governor, onDpr }: SceneProps) {
+function DioramaScene({ build, mode, kind, daytime, surface, handle, reducedMotion, governor, onDpr }: SceneProps) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -124,8 +127,7 @@ function DioramaScene({ build, mode, kind, daytime, handle, reducedMotion, gover
   }, [gl, scene, camera]);
 
   useEffect(() => {
-    // Diffuse (overcast, night) light leans on occlusion for form; direct sun on shadows.
-    if (post) post.ao.blendIntensity = kind === 'clear' || kind === 'partly' ? 0.8 : 1;
+    if (post) post.ao.blendIntensity = AO_BLEND[kind];
   }, [post, kind]);
 
   /** Size the composer and fit the tile's projected half-extents into each field of view. */
@@ -212,7 +214,7 @@ function DioramaScene({ build, mode, kind, daytime, handle, reducedMotion, gover
 
   return (
     <>
-      <Atmosphere kind={kind} daytime={daytime} reducedMotion={reducedMotion} />
+      <Atmosphere kind={kind} daytime={daytime} surface={surface} reducedMotion={reducedMotion} />
       <primitive object={stage.root} />
     </>
   );

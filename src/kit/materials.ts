@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TILE } from './base';
 import { SHORE_MAX, waterShore } from './shore';
+import { cityLight, glslColor, patchSurface, surfaceUniforms, type SurfaceRole } from './surface';
 
 export interface MatOptions {
   roughness?: number;
@@ -10,6 +11,8 @@ export interface MatOptions {
   transparent?: boolean;
   opacity?: number;
   flat?: boolean;
+  /** How weather lies on it (see `SurfaceRole`); default `ground`, or `none` when `emissive` is set. */
+  surface?: SurfaceRole;
 }
 
 const cache = new Map<string, THREE.MeshStandardMaterial>();
@@ -19,7 +22,8 @@ const cache = new Map<string, THREE.MeshStandardMaterial>();
  * instance, which lets the static-geometry merger batch meshes by material.
  */
 export function mat(color: THREE.ColorRepresentation, o: MatOptions = {}): THREE.MeshStandardMaterial {
-  const key = `${new THREE.Color(color).getHexString()}|${o.roughness ?? 0.85}|${o.metalness ?? 0}|${o.emissive ?? ''}|${o.emissiveIntensity ?? 1}|${o.transparent ?? false}|${o.opacity ?? 1}|${o.flat ?? false}`;
+  const surface = o.surface ?? (o.emissive === undefined ? 'ground' : 'none');
+  const key = `${new THREE.Color(color).getHexString()}|${o.roughness ?? 0.85}|${o.metalness ?? 0}|${o.emissive ?? ''}|${o.emissiveIntensity ?? 1}|${o.transparent ?? false}|${o.opacity ?? 1}|${o.flat ?? false}|${surface}`;
   let m = cache.get(key);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
@@ -32,6 +36,7 @@ export function mat(color: THREE.ColorRepresentation, o: MatOptions = {}): THREE
       opacity: o.opacity ?? 1,
       flatShading: o.flat ?? false,
     });
+    patchSurface(m, surface);
     cache.set(key, m);
   }
   return m;
@@ -49,6 +54,8 @@ export function setWaterSky(color: THREE.ColorRepresentation, intensity: number)
 }
 
 const waterCache = new Map<number, THREE.MeshStandardMaterial>();
+/** Frozen water, blended in by `surfaceUniforms.uIce`. */
+const ICE = glslColor(0xc4d8e6);
 
 /**
  * Water with animated ripples. Two crossing swell trains plus a fine chop tilt
@@ -59,7 +66,8 @@ const waterCache = new Map<number, THREE.MeshStandardMaterial>();
  * a sky gradient, so water looks dark and saturated looking down into it and
  * silvers toward grazing angles and on wave flanks. Slow, drifting wind patches
  * vary the chop and the sheen across open water. Side faces (quay walls, slab
- * edges) keep their flat normal and plain shading.
+ * edges) keep their flat normal and plain shading. `surfaceUniforms.uIce`
+ * freezes the top: pale matt ice without ripples, foam or glitter.
  */
 export function waterMat(color: THREE.ColorRepresentation): THREE.MeshStandardMaterial {
   const hex = new THREE.Color(color).getHex();
@@ -71,6 +79,7 @@ export function waterMat(color: THREE.ColorRepresentation): THREE.MeshStandardMa
     shader.uniforms.uWaterTime = waterTime;
     shader.uniforms.uWaterSky = waterSky;
     shader.uniforms.uCityLight = cityLight;
+    shader.uniforms.uIce = surfaceUniforms.uIce;
     shader.uniforms.uShore = waterShore.map;
     shader.uniforms.uShoreScale = waterShore.scale;
     shader.vertexShader = shader.vertexShader
@@ -85,6 +94,7 @@ export function waterMat(color: THREE.ColorRepresentation): THREE.MeshStandardMa
         `uniform float uWaterTime;
 uniform vec3 uWaterSky;
 uniform float uCityLight;
+uniform float uIce;
 uniform sampler2D uShore;
 uniform float uShoreScale;
 varying vec3 vWaterPos;
@@ -142,7 +152,9 @@ if (waterTop > 0.5) {
   waterSurfPhase = shoreD.g * 34.0 + uWaterTime * 2.4 + (sBreak - 0.5) * 1.6;
   float crest = smoothstep(0.72, 0.97, 0.5 + 0.5 * sin(waterSurfPhase));
   foam = max(foam, crest * waterSurf * smoothstep(0.25, 0.65, sBreak + 0.15) * 0.75);
-  diffuseColor.rgb = mix(body, vec3(0.92, 0.94, 0.95), foam) * mix(1.0, 0.5, uCityLight);
+  // Frozen (uIce): pale, matt ice with no foam.
+  foam *= 1.0 - uIce;
+  diffuseColor.rgb = mix(mix(body, vec3(0.92, 0.94, 0.95), foam), ${ICE}, uIce) * mix(1.0, 0.5, uCityLight);
 }`,
       )
       .replace(
@@ -162,6 +174,9 @@ if (waterTop > 0.5) {
   g += (0.15 + 0.35 * waterWind) * ng;
   // Surf ripples: the rolling waves tilt the surface toward and away from the beach.
   g += waterSurf * 2.6 * cos(waterSurfPhase) * waterOffshore;
+  // Ice is still: no ripples or surf, and a duller finish.
+  g *= 1.0 - uIce;
+  roughnessFactor = mix(roughnessFactor, 0.35, uIce);
   normal = normalize((viewMatrix * vec4(normalize(vec3(-g.x * 0.07, 1.0, -g.y * 0.07)), 0.0)).xyz);
 }`,
       )
@@ -179,7 +194,7 @@ radiance *= 1.0 - waterTop;
         '#include <lights_fragment_end>',
         `#include <lights_fragment_end>
 float waterSparkle = smoothstep(0.72, 0.92, waterNoise(vWaterPos.xz * 34.0 + vec2(uWaterTime * 1.3, uWaterTime * -0.9)));
-reflectedLight.directSpecular *= mix(1.0, waterSparkle * 0.8, waterTop);`,
+reflectedLight.directSpecular *= mix(1.0, mix(waterSparkle * 0.8, 1.0, uIce), waterTop);`,
       )
       // Sky reflection: Schlick Fresnel (F0 0.02) on the rippled normal, mirroring a horizon-to-zenith gradient.
       .replace(
@@ -190,7 +205,7 @@ reflectedLight.directSpecular *= mix(1.0, waterSparkle * 0.8, waterTop);`,
   vec3 sky = uWaterSky * mix(vec3(1.0), vec3(0.62, 0.72, 0.9), up);
   float cosV = clamp(dot(normal, geometryViewDir), 0.0, 1.0);
   float fresnel = 0.02 + 0.98 * pow(1.0 - cosV, 5.0);
-  fresnel = clamp(fresnel * mix(2.2, 3.4, waterWind), 0.0, 0.85);
+  fresnel = clamp(fresnel * mix(2.2, 3.4, waterWind), 0.0, 0.85) * mix(1.0, 0.4, uIce);
   outgoingLight = mix(outgoingLight, sky, fresnel);
 }
 #include <opaque_fragment>`,
@@ -227,8 +242,6 @@ export const lampMaterial = new THREE.MeshStandardMaterial({
 });
 
 const floodCache = new Map<string, { m: THREE.MeshStandardMaterial; peak: number }>();
-/** Last `setCityLights` level, so a city built later starts at the right glow; shaders read it as a uniform. */
-const cityLight = { value: 0 };
 
 /**
  * Surface floodlit at night (a statue, a stadium pitch): plain `color` by day,
@@ -242,6 +255,8 @@ export function floodMat(color: THREE.ColorRepresentation, glow: THREE.ColorRepr
       m: new THREE.MeshStandardMaterial({ color, emissive: glow, emissiveIntensity: peak * cityLight.value, roughness: o.roughness ?? 0.85, flatShading: o.flat ?? false }),
       peak,
     };
+    // Statues and pitches take snow like any ground (snow on heads and shoulders).
+    patchSurface(f.m, 'ground');
     floodCache.set(key, f);
   }
   return f.m;
@@ -353,7 +368,7 @@ export function setCityLights(level: number): void {
 
 /** Common palette. Cities may also call `mat()` for one-off colours. */
 export const M = {
-  get asphalt() { return mat(0x5d636b, { roughness: 0.95 }); },
+  get asphalt() { return mat(0x5d636b, { roughness: 0.95, surface: 'road' }); },
   get roadLine() { return mat(0xf2efe6); },
   get pavement() { return mat(0xc9c4ba); },
   get cobble() { return mat(0x8d8f93, { roughness: 0.9 }); },

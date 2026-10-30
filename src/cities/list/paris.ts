@@ -18,7 +18,7 @@ const UMBRELLAS = [0xc8433a, 0x2f343b, 0x3d6fb6, 0xe0b43a];
 const COATS = [0x2b2f3a, 0xb8a98a, 0x24406b, 0x7a2e2e, 0xc08a4e, 0xd9d4c7, 0x5f6b4e];
 // Rain-slick ground, as in the poster: low roughness picks up the sky environment.
 const WET_COBBLE = mat(0x8d9199, { roughness: 0.4, metalness: 0.15 });
-const WET_ROAD = mat(0x6c7179, { roughness: 0.35, metalness: 0.2 });
+const WET_ROAD = mat(0x6c7179, { roughness: 0.35, metalness: 0.2, surface: 'road' });
 const WET_PAVING = mat(0xc4c3bf, { roughness: 0.4, metalness: 0.1 });
 const PUDDLE = waterMat(0x8fb7cf);
 const DOME_SLATE = mat(0x4f5b69, { roughness: 0.6, flat: true });

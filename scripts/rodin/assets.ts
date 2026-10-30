@@ -215,14 +215,16 @@ export const ASSETS: RodinAsset[] = [
     replaces: 'rio-de-janeiro.ts corcovado() (keep christ() on the summit platform)',
     subject: 'Corcovado mountain in Rio de Janeiro, without the statue',
     look:
-      'A tall, steep granite mountain about one and a half times taller than it is wide at the base, like a thick leaning tower of ' +
-      'rock, not a wide hill. The lower third is a narrow skirt of rainforest drawn as a few large smooth rounded canopy masses, not ' +
-      'many small bumps. Above it a tall bare granite peak, slightly hunched backward, with one sheer, smooth, almost vertical cliff ' +
-      'face on the front running from the forest to the summit. The summit ends in a small flat square platform, empty, ready for a ' +
-      'statue. Front = the sheer granite cliff, facing the viewer.',
-    colours: ['rainforest: mid green (#4f9444)', 'bare granite rock and summit platform: warm grey (#a6a39a)'],
-    exclude: ['Christ the Redeemer statue', 'buildings', 'roads', 'railway', 'clouds', 'sea', 'city'],
-    tris: 3000,
+      'A broad, massive granite mountain about one and a half times wider than it is tall, shaped like a big rounded dome with ' +
+      'steep sides, not a thin tower or spike. The front face is a wide sheer slab of bare granite from the foot almost to the top, ' +
+      'broken by two or three horizontal ledges carrying patches of rainforest. Dense rainforest, drawn as large smooth rounded ' +
+      'canopy masses (not many small bumps), wraps the right flank, the back and the shoulders, and forms a thick crown around the ' +
+      'top. The summit is slightly left of centre and ends in a small flat round platform of bare rock, empty, ready for a statue. ' +
+      'The base is wide and flat on the ground all round. Front = the bare granite face, facing the viewer.',
+    colours: ['rainforest: deep green (#3f7a36)', 'bare granite rock and summit platform: warm brown-grey (#8d8174)'],
+    exclude: ['Christ the Redeemer statue', 'stairs', 'buildings', 'roads', 'railway', 'cable car', 'clouds', 'sea', 'city', 'ground plate'],
+    poster: { name: 'rio-de-janeiro', crop: [178, 305, 175, 130] },
+    tris: 4000,
   },
   {
     name: 'batu-cliff',

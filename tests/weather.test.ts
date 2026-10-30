@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { daytimeAt, formatLocalDate, localDaytime } from '../src/weather/api';
+import { daytimeAt, formatLocalDate, localDaytime, type Weather } from '../src/weather/api';
 import { kindFromWmo } from '../src/weather/codes';
+import { surfaceFor } from '../src/weather/surface';
 
 describe('kindFromWmo', () => {
   it.each([
     [0, 'clear'],
-    [1, 'partly'],
-    [2, 'partly'],
+    [1, 'clear'],
+    [2, 'clear'],
     [3, 'cloudy'],
     [45, 'fog'],
     [48, 'fog'],
-    [51, 'drizzle'],
-    [57, 'drizzle'],
+    [51, 'rain'],
+    [57, 'rain'],
     [61, 'rain'],
     [67, 'rain'],
     [80, 'rain'],
@@ -20,8 +21,8 @@ describe('kindFromWmo', () => {
     [77, 'snow'],
     [85, 'snow'],
     [86, 'snow'],
-    [95, 'storm'],
-    [99, 'storm'],
+    [95, 'rain'],
+    [99, 'rain'],
   ])('maps WMO %i to %s', (code, kind) => {
     expect(kindFromWmo(code)).toBe(kind);
   });
@@ -29,6 +30,31 @@ describe('kindFromWmo', () => {
   it('treats unknown codes as overcast rather than clear', () => {
     expect(kindFromWmo(4)).toBe('cloudy');
     expect(kindFromWmo(100)).toBe('cloudy');
+  });
+});
+
+describe('surfaceFor', () => {
+  const w = (over: Partial<Weather>): Weather => ({ kind: 'clear', tempC: 10, daytime: 'day', live: true, snowDepthM: 0, ...over });
+  const snowy = { snow: true };
+
+  it('draws no snow or ice in a no-snow city even when the feed reports snow', () => {
+    expect(surfaceFor(w({ kind: 'snow', tempC: -5, snowDepthM: 0.3 }), { snow: false })).toMatchObject({ snow: 0, ice: 0 });
+  });
+
+  it('scales cover with lying snow under a clear sky, full at 5 cm', () => {
+    expect(surfaceFor(w({ snowDepthM: 0.02 }), snowy).snow).toBeCloseTo(0.4);
+    expect(surfaceFor(w({ snowDepthM: 0.2 }), snowy).snow).toBe(1);
+    expect(surfaceFor(w({ kind: 'snow' }), snowy).snow).toBe(1);
+  });
+
+  it('freezes water below −2 °C and while snowing', () => {
+    expect(surfaceFor(w({ tempC: -3 }), snowy).ice).toBe(1);
+    expect(surfaceFor(w({ tempC: -1 }), snowy).ice).toBe(0);
+  });
+
+  it('wets ground in rain unless snow covers it', () => {
+    expect(surfaceFor(w({ kind: 'rain' }), snowy)).toMatchObject({ wet: 1, fog: 0.25 });
+    expect(surfaceFor(w({ kind: 'rain', snowDepthM: 0.04 }), snowy).wet).toBe(0);
   });
 });
 

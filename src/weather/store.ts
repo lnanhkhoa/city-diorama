@@ -5,7 +5,7 @@ const TTL_MS = 10 * 60 * 1000;
 
 /** The city's typical weather at its local hour. */
 export function typicalWeather(city: CityDef): Weather {
-  return { ...city.fallback, daytime: localDaytime(city.timezone), live: false };
+  return { ...city.fallback, daytime: localDaytime(city.timezone), live: false, snowDepthM: 0 };
 }
 
 /** Live conditions per city, cached for ten minutes. */

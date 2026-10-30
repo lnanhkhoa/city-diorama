@@ -22,6 +22,11 @@ export interface CityDef {
   theme: { bg: [string, string]; ink: string };
   /** Shown before / instead of live weather. */
   fallback: { kind: WeatherKind; tempC: number };
+  /**
+   * False for cities where snow never lies (tropics, desert): a pinned `snow`
+   * shows the typical weather instead, and no snow cover is ever drawn.
+   */
+  snow: boolean;
 }
 
 /** Default export of a city scene module. */

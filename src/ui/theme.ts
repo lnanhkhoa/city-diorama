@@ -1,5 +1,6 @@
 import type { CityDef } from '../cities/types';
 import type { Daytime } from '../weather/api';
+import type { WeatherKind } from '../weather/codes';
 
 type Theme = CityDef['theme'];
 
@@ -11,14 +12,23 @@ const PHASE_THEME: Record<Exclude<Daytime, 'day'>, Theme> = {
   dark: { bg: ['#0e121d', '#1b2133'], ink: '#dfe5f0' },
 };
 
-export function themeFor(city: CityDef, daytime: Daytime): Theme {
-  return daytime === 'day' ? city.theme : PHASE_THEME[daytime];
+/** Shared daytime palettes for weather other than clear sky, as the posters do. */
+const WEATHER_THEME: Record<Exclude<WeatherKind, 'clear'>, Theme> = {
+  cloudy: { bg: ['#cfd4da', '#b9c0c8'], ink: '#28303b' },
+  fog: { bg: ['#e3e6e9', '#d2d6db'], ink: '#2a3038' },
+  rain: { bg: ['#b9c4d1', '#a1aebf'], ink: '#2f3a4a' },
+  snow: { bg: ['#d6e4f2', '#bfd3e8'], ink: '#27364a' },
+};
+
+export function themeFor(city: CityDef, daytime: Daytime, kind: WeatherKind): Theme {
+  if (daytime !== 'day') return PHASE_THEME[daytime];
+  return kind === 'clear' ? city.theme : WEATHER_THEME[kind];
 }
 
 /** Set the page palette (CSS variables and browser chrome colour). */
-export function applyTheme(city: CityDef, daytime: Daytime): void {
+export function applyTheme(city: CityDef, daytime: Daytime, kind: WeatherKind): void {
   const root = document.documentElement.style;
-  const theme = themeFor(city, daytime);
+  const theme = themeFor(city, daytime, kind);
   root.setProperty('--bg-top', theme.bg[0]);
   root.setProperty('--bg-bottom', theme.bg[1]);
   root.setProperty('--ink', theme.ink);

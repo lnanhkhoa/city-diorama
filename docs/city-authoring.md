@@ -46,7 +46,7 @@ object stands; `Place = { x, y, z, ry }`.
 | `tree({ kind: 'round' \| 'cone' \| 'palm' \| 'blossom' \| 'umbrella' })`, `lamp`, `bench`, `person({ color, umbrella })`, `car({ taxi })`, `bus`, `boat`, `screen` | Props. Trees (`src/kit/trees.ts`) vary size, tone, lean and crown layout by position. They use three shared textured materials (canopy, frond, bark) with the colour in vertex colours, so all trees in a city, of every kind, cost three draw calls. Build tree-like props through `tree()` rather than flat `M.leaf` primitives, or they lose the leaf texture. A palm is ~830 tris and its fronds reach ~0.53·`s` from the trunk; a round or blossom tree is ~620 tris, an umbrella (Italian stone pine: tall bare trunk, flat lobed crown reaching ~0.5·`s`) ~580, a cone tree ~80. Budget dense groves accordingly. Vehicles and people are pre-merged per material, so they can be animated as is. `person` is ~0.235 tall (umbrella canopy to ~0.33): set `y` to the top of the surface under it (0.04 on a default `patch`, 0.05 on a `road`), give it a city clothing palette via `color`, and it faces a position-hashed direction unless `ry` is set. |
 | `rng(seed)`, `scatter(rect, n, rand, make, avoid?)`, `row(x1, z1, x2, z2, n, make)` | Deterministic placement. `avoid(x, z)` redraws points that fall on footprints (tower legs, pools, monuments) inside the rect. |
 | `Animator.follow / spin / bob` | Traffic on paths, rotating things, bobbing boats. Return `anim.update` as `update`. |
-| `M.*`, `mat(color, opts)` | Shared palette and cached materials. Reuse materials: identical `mat()` calls batch into one draw call. |
+| `M.*`, `mat(color, opts)` | Shared palette and cached materials. Reuse materials: identical `mat()` calls batch into one draw call. `opts.surface` says how weather lies on it (see [Weather on surfaces](#weather-on-surfaces)). |
 | `M.water`, `waterMat(color)` | Water with animated ripples, wind patches, glitter and a Fresnel sky reflection that follows the weather and time of day (no UVs needed, still merges). The shader deepens and slightly desaturates `color` as the body colour and darkens it at night, so pick the water's daylight hue. When a city mounts, the stage bakes top-view shore maps from the scene's geometry (`src/kit/shore.ts`, ~10–40 ms): every shore gets a thin lapping foam line, and a beach or low bank (the dry cells touching the water lie no more than 0.03 above it, with no wall beside them) also gets a lighter, greener shallow margin about 0.4 wide and a surf zone, where small waves roll in toward the beach with broken, foaming crests. Surf needs open water: where another shore lies within ~0.9 offshore (a lagoon, the gaps between the Palm's fronds, a narrow river) it drops to a faint lap. Do not paint a static white surf strip along a beach: the shader draws the surf, and a strip standing in the water would itself become shore. Seawalls, quays and kerbs keep deep water right up to them, so model a wall as a solid that stands above the water and a beach as ground at or below water level. Ground standing in the water (islands, piers, bridge piers) counts as shore. A bridge deck or arch does not when its underside sits more than 0.01 above the water, so give a low bridge a real soffit rather than running the road through the river; decks 0.6 or more above the water never count. Static props smaller than 0.35 units² out on open water (moored boats) leave the water open around them. Dry ground within 0.4 of the tile rim counts as plinth curb, not shore. Use for every water surface, in the city's own colour if needed. |
 | `mergeStatic(group)` | Pre-merge an animated assembly per material before animating it. |
 | `windowMaterial`, `lampMaterial` | Glow automatically at night. Use for any glazing/lit sign you want lit at night. |
@@ -68,7 +68,8 @@ object stands; `Place = { x, y, z, ry }`.
   The kit trees (`src/kit/trees.ts`) show the pattern: textures drawn in code,
   hue in vertex colours.
 - Never create `new THREE.MeshStandardMaterial` per object; use `mat()`, or for a
-  texture one cached material built once (as `treeMaterials()` does).
+  texture one cached material built once (as `treeMaterials()` does), passed
+  through `patchSurface(m, 'ground')` if weather should lie on it.
 - Static meshes are merged automatically by material after `build()`. Anything
   animated must go through `Animator` (which flags it dynamic).
 - `build()` must be deterministic (use `rng(seed)`, never `Math.random`).
@@ -83,6 +84,29 @@ object stands; `Place = { x, y, z, ry }`.
   per material with `mergeStatic(group)` before animating, as `car()` does;
   otherwise every spoke is a separate draw call.
 
+## Weather on surfaces
+
+Every `mat()` material is patched with one global surface layer
+(`src/kit/surface.ts`): snow on upward faces (patchy on steep ones and at
+partial depth), darker glossy ground with puddles in rain, and a warm puddle
+sheen at night. `waterMat` freezes to ice instead. The amounts are shared
+uniforms, so weather changes never add draw calls or recompile shaders.
+`mat(color, { surface })` picks the role:
+
+- `ground` (default): snow and wet. Roofs, pavements, lawns, plazas, statues.
+- `road`: wet, and snow only as grey slush (ploughed streets). Use it for every
+  street material passed to `road()`; `M.asphalt` already has it.
+- `none` (default when `emissive` is set): untouched. People (coat, skin, hair,
+  umbrella), vehicle paint, screens, anything that must keep its colour.
+  `person`, `car`, `bus` and `screen` already opt out. A role is part of the
+  cache key, so `mat(c)` and `mat(c, { surface: 'none' })` are two materials
+  (and two draw calls if both are used).
+
+`floodMat` and the tree canopies/fronds are patched as `ground`;
+`windowMaterial`, `lampMaterial` and `floorLinesGlass` stay unpatched. A
+hand-made `MeshStandardMaterial` (a texture, a custom shader) gets the layer
+with `patchSurface(m, role)`, which chains any existing `onBeforeCompile`.
+
 ## Inspecting a city
 
 Open `http://localhost:5173/#/<slug>` after `bun run dev` and orbit/zoom with
@@ -96,4 +120,7 @@ before capturing, otherwise the frame can be stale.
 `slug` (kebab-case, matches the scene file name), `name`, `country`, `lat`,
 `lon`, `timezone` (IANA), `theme.bg` (two hex colours, light poster gradient),
 `theme.ink` (dark text colour readable on it), `fallback` (`kind` and `tempC`
-typical for the city).
+typical for the city; `kind` is one of `clear`, `cloudy`, `fog`, `rain`,
+`snow`), `snow` (false where snow never lies: a pinned `snow` then shows the
+typical weather, and no snow cover is drawn). `theme` is the clear-day
+palette; other kinds and night phases use shared palettes (`src/ui/theme.ts`).

@@ -28,7 +28,7 @@ const DUNE = mat(0xcda262);
 const NILE = waterMat(0x4f9fb8);
 const GREEN = mat(0x7fae56);
 const PLATEAU = mat(0xcaa874);
-const ROAD = mat(0x6a6460, { roughness: 0.95 });
+const ROAD = mat(0x6a6460, { roughness: 0.95, surface: 'road' });
 
 const STONE_LIGHT = mat(0xe3b86e, { roughness: 0.95 });
 const NEMES_DARK = mat(0x8f6a38, { roughness: 0.9 });

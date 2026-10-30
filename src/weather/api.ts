@@ -19,14 +19,16 @@ export interface Weather {
   tempC: number;
   daytime: Daytime;
   live: boolean;
+  /** Lying snow in metres (Open-Meteo `snow_depth`); 0 when unknown or typical. */
+  snowDepthM: number;
 }
 
 interface OpenMeteoCurrent {
-  current?: { time?: string; temperature_2m?: number; weather_code?: number; is_day?: number };
+  current?: { time?: string; temperature_2m?: number; weather_code?: number; is_day?: number; snow_depth?: number | null };
 }
 
 const ENDPOINT = 'https://api.open-meteo.com/v1/forecast';
-const FIELDS = 'current=temperature_2m,weather_code,is_day&timezone=auto';
+const FIELDS = 'current=temperature_2m,weather_code,is_day,snow_depth&timezone=auto';
 
 /**
  * Phase at a local `hour`, given whether the sun is up. Lit hours before 08:00
@@ -44,7 +46,7 @@ function parseCurrent(body: OpenMeteoCurrent): Weather | null {
   // `time` is the place's local "YYYY-MM-DDTHH:MM" (timezone=auto); without it only day/night is known.
   const hour = c.time ? Number(c.time.slice(11, 13)) : NaN;
   const daytime = Number.isNaN(hour) ? (sunUp ? 'day' : 'night') : daytimeAt(hour, sunUp);
-  return { kind: kindFromWmo(c.weather_code), tempC: c.temperature_2m, daytime, live: true };
+  return { kind: kindFromWmo(c.weather_code), tempC: c.temperature_2m, daytime, live: true, snowDepthM: c.snow_depth ?? 0 };
 }
 
 /** Current conditions from Open-Meteo (free, keyless, CORS-enabled). */

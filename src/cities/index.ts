@@ -14,7 +14,8 @@ export const CITIES: CityDef[] = [
     lon: 105.8342,
     timezone: 'Asia/Ho_Chi_Minh',
     theme: { bg: ['#eef0e2', '#dde3c9'], ink: '#2b3226' },
-    fallback: { kind: 'partly', tempC: 27 },
+    fallback: { kind: 'clear', tempC: 27 },
+    snow: false,
   },
   {
     slug: 'ho-chi-minh',
@@ -24,7 +25,8 @@ export const CITIES: CityDef[] = [
     lon: 106.7009,
     timezone: 'Asia/Ho_Chi_Minh',
     theme: { bg: ['#e9f1e2', '#d3e3cc'], ink: '#1c2a1d' },
-    fallback: { kind: 'clear', tempC: 31 },
+    fallback: { kind: 'rain', tempC: 31 },
+    snow: false,
   },
   {
     slug: 'paris',
@@ -35,6 +37,7 @@ export const CITIES: CityDef[] = [
     timezone: 'Europe/Paris',
     theme: { bg: ['#b9c4d1', '#a1aebf'], ink: '#2f3a4a' },
     fallback: { kind: 'rain', tempC: 9 },
+    snow: true,
   },
   {
     slug: 'new-york',
@@ -44,7 +47,8 @@ export const CITIES: CityDef[] = [
     lon: -74.006,
     timezone: 'America/New_York',
     theme: { bg: ['#d3e2f0', '#bcd0e4'], ink: '#27364a' },
-    fallback: { kind: 'partly', tempC: 13 },
+    fallback: { kind: 'snow', tempC: -5 },
+    snow: true,
   },
   {
     slug: 'sydney',
@@ -55,6 +59,7 @@ export const CITIES: CityDef[] = [
     timezone: 'Australia/Sydney',
     theme: { bg: ['#cde5f2', '#b2d3e9'], ink: '#28323e' },
     fallback: { kind: 'clear', tempC: 22 },
+    snow: true,
   },
   {
     slug: 'rome',
@@ -65,6 +70,7 @@ export const CITIES: CityDef[] = [
     timezone: 'Europe/Rome',
     theme: { bg: ['#cdd2d9', '#b8bfc9'], ink: '#2b313b' },
     fallback: { kind: 'clear', tempC: 20 },
+    snow: true,
   },
   {
     slug: 'kuala-lumpur',
@@ -74,7 +80,8 @@ export const CITIES: CityDef[] = [
     lon: 101.6869,
     timezone: 'Asia/Kuala_Lumpur',
     theme: { bg: ['#f4e7d4', '#ead7bd'], ink: '#2f2a25' },
-    fallback: { kind: 'partly', tempC: 31 },
+    fallback: { kind: 'rain', tempC: 31 },
+    snow: false,
   },
   {
     slug: 'tokyo',
@@ -84,7 +91,8 @@ export const CITIES: CityDef[] = [
     lon: 139.6503,
     timezone: 'Asia/Tokyo',
     theme: { bg: ['#f1e4e8', '#e2cdd4'], ink: '#2c2833' },
-    fallback: { kind: 'partly', tempC: 17 },
+    fallback: { kind: 'cloudy', tempC: 17 },
+    snow: true,
   },
   {
     slug: 'london',
@@ -94,7 +102,8 @@ export const CITIES: CityDef[] = [
     lon: -0.1278,
     timezone: 'Europe/London',
     theme: { bg: ['#cbd1d9', '#b4bcc7'], ink: '#28303b' },
-    fallback: { kind: 'drizzle', tempC: 12 },
+    fallback: { kind: 'cloudy', tempC: 12 },
+    snow: true,
   },
   {
     slug: 'dubai',
@@ -105,6 +114,7 @@ export const CITIES: CityDef[] = [
     timezone: 'Asia/Dubai',
     theme: { bg: ['#f5e6cd', '#ead3ae'], ink: '#382c20' },
     fallback: { kind: 'clear', tempC: 33 },
+    snow: false,
   },
   {
     slug: 'cairo',
@@ -115,6 +125,7 @@ export const CITIES: CityDef[] = [
     timezone: 'Africa/Cairo',
     theme: { bg: ['#f2e1c4', '#e4cba2'], ink: '#3a2d1e' },
     fallback: { kind: 'clear', tempC: 29 },
+    snow: false,
   },
   {
     slug: 'rio-de-janeiro',
@@ -124,7 +135,8 @@ export const CITIES: CityDef[] = [
     lon: -43.1729,
     timezone: 'America/Sao_Paulo',
     theme: { bg: ['#d5edf0', '#bbe0e5'], ink: '#22343a' },
-    fallback: { kind: 'partly', tempC: 26 },
+    fallback: { kind: 'clear', tempC: 26 },
+    snow: false,
   },
   {
     slug: 'san-francisco',
@@ -135,6 +147,7 @@ export const CITIES: CityDef[] = [
     timezone: 'America/Los_Angeles',
     theme: { bg: ['#e0e6eb', '#c9d3dc'], ink: '#262f38' },
     fallback: { kind: 'fog', tempC: 16 },
+    snow: true,
   },
 ];
 

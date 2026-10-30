@@ -5,16 +5,11 @@ const AREA = 22;
 const TOP = 18;
 const FLOOR = -1;
 
-/** Rain streaks, snowflakes and lightning, confined to the diorama volume. */
+/** Rain streaks and snowflakes, confined to the diorama volume. */
 export class WeatherFx {
   readonly group = new THREE.Group();
   private rain: THREE.LineSegments;
   private snow: THREE.Points;
-  private kind: WeatherKind = 'clear';
-  private flash = 0;
-  private nextFlash = 3;
-  /** 0..1 brightness boost from lightning; read by the stage. */
-  flashLevel = 0;
 
   constructor(private readonly reducedMotion: boolean) {
     this.rain = this.makeRain(1800);
@@ -24,11 +19,7 @@ export class WeatherFx {
   }
 
   set(kind: WeatherKind): void {
-    this.kind = kind;
-    const rainy = kind === 'rain' || kind === 'drizzle' || kind === 'storm';
-    this.rain.visible = rainy;
-    this.rain.geometry.setDrawRange(0, (kind === 'drizzle' ? 600 : 1800) * 2);
-    (this.rain.material as THREE.LineBasicMaterial).opacity = kind === 'drizzle' ? 0.35 : 0.5;
+    this.rain.visible = kind === 'rain';
     this.snow.visible = kind === 'snow';
   }
 
@@ -59,15 +50,6 @@ export class WeatherFx {
       }
       pos.needsUpdate = true;
     }
-    if (this.kind === 'storm') {
-      this.nextFlash -= dt;
-      if (this.nextFlash <= 0) {
-        this.flash = 0.35;
-        this.nextFlash = 3 + Math.random() * 5;
-      }
-    }
-    this.flash = Math.max(0, this.flash - dt);
-    this.flashLevel = this.flash > 0 ? Math.abs(Math.sin(this.flash * 40)) : 0;
   }
 
   private makeRain(n: number): THREE.LineSegments {

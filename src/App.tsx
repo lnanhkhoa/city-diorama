@@ -16,6 +16,7 @@ import { formatLocalDate, type Daytime, type Weather } from './weather/api';
 import { WEATHER_LABEL, type WeatherKind } from './weather/codes';
 import { applyPin, asDaytime, asWeatherKind, pinFromSearch, writePin, type WeatherPin } from './weather/pin';
 import { WeatherStore, typicalWeather } from './weather/store';
+import { surfaceFor, type Surface } from './weather/surface';
 
 const weatherStore = new WeatherStore();
 const NEIGHBOUR_PREFETCH_MS = 1500;
@@ -50,9 +51,13 @@ export function App() {
   const toast = useToast();
   const diorama = useRef<DioramaHandle>(null);
 
-  /** Live conditions if fresh (unless the weather is pinned), otherwise the city's typical weather at its local hour. */
-  const knownWeather = (city: CityDef): Weather => applyPin((pin.kind ? null : weatherStore.fresh(city)) ?? typicalWeather(city), pin);
+  /**
+   * Live conditions if fresh (unless the weather is pinned), otherwise the city's typical weather at its local hour;
+   * `applyPin` keeps snow out of cities where it never lies.
+   */
+  const knownWeather = (city: CityDef): Weather => applyPin((pin.kind ? null : weatherStore.fresh(city)) ?? typicalWeather(city), pin, city);
   const weather = knownWeather(current);
+  const surface = surfaceFor(weather, current);
 
   /** City `step` places from `city` in display order, wrapping around. */
   function neighbour(city: CityDef, step: number): CityDef {
@@ -156,7 +161,7 @@ export function App() {
     return () => weatherStore.cancel();
   }, [current, pin.kind]);
 
-  useLayoutEffect(() => applyTheme(current, weather.daytime), [current, weather.daytime]);
+  useLayoutEffect(() => applyTheme(current, weather.daytime, weather.kind), [current, weather.daytime, weather.kind]);
 
   useEffect(() => {
     document.title = `${current.name} — Cities Diorama`;
@@ -170,7 +175,7 @@ export function App() {
     <>
       <Suspense fallback={<div className="stage" />}>
         {staged ? (
-          <StagedDiorama route={staged} onSettled={onSettled} kind={weather.kind} daytime={weather.daytime} handle={diorama} />
+          <StagedDiorama route={staged} onSettled={onSettled} kind={weather.kind} daytime={weather.daytime} surface={surface} handle={diorama} />
         ) : (
           <div className="stage" />
         )}
@@ -265,6 +270,7 @@ interface StagedProps {
   onSettled: (route: Route, ok: boolean) => void;
   kind: WeatherKind;
   daytime: Daytime;
+  surface: Surface;
   handle: Ref<DioramaHandle>;
 }
 

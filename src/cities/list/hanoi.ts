@@ -25,7 +25,7 @@ const SHUTTER = mat(0x3f7a5a, { roughness: 0.8 });
 const IRON_DARK = mat(0x3b4a3f, { roughness: 0.6, metalness: 0.3 });
 // Hoan Kiem's water is an opaque jade green from its algae, not clear turquoise.
 const LAKE = waterMat(0x6f9e72);
-const ASPHALT = mat(0x8a8d90, { roughness: 0.95 });
+const ASPHALT = mat(0x8a8d90, { roughness: 0.95, surface: 'road' });
 const PLAZA = mat(0xd9d5c8);
 const LAWN_EDGE = mat(0xf1eee4);
 const VILLA_WALL = mat(0xf0dcae);
